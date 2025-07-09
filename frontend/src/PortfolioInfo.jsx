@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { BASE_URL } from "./lib/utils";
 import { useParams } from "react-router-dom";
 import PortfolioCompanies from "./components/PortfolioCompanies";
-import SwingCompanies from "./components/swingCompanies";
+import SwingCompanies from "./components/SwingCompanies";
 
 const MODE_DAY = "Day";
 

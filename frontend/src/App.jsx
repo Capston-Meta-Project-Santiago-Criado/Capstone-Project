@@ -3,7 +3,6 @@ import "./App.css";
 import Login from "./Login";
 import SignUp from "./SignUp";
 import Home from "./Home";
-import { BASE_URL } from "./lib/utils";
 import { UserInfo } from "./context/UserContext";
 import CompanyInfo from "./CompanyInfo";
 import Portfolios from "./Portfolios";
