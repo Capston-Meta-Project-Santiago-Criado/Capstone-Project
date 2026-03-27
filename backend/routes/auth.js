@@ -1,4 +1,4 @@
-const { MIN_PASSWORD_LENGTH } = require("../../frontend/src/lib/constants");
+const MIN_PASSWORD_LENGTH = 8;
 
 const { PrismaClient } = require("../generated/prisma");
 const prisma = new PrismaClient();

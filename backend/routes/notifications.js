@@ -35,14 +35,11 @@ router.get("/unread", async (req, res) => {
 
 router.post("/reset", async (req, res) => {
   const userId = req.session.userId;
-  const userData = await prisma.user.update({
-    where: {
-      id: userId,
-    },
-    data: {
-      unreadNotifications: 0,
-    },
+  await prisma.user.update({
+    where: { id: userId },
+    data: { unreadNotifications: 0 },
   });
+  res.json({ ok: true });
 });
 
 module.exports = router;

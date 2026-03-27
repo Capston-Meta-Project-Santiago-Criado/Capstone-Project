@@ -37,20 +37,24 @@ const FORM_TYPE = { tenk: "10-K", eightk: "8-K", tenq: "10-Q" };
 
 router.post("/companyfill", async (req, res) => {
   const companies = await prisma.company.findMany({
-    include: {
-      _count: {
-        select: { documents: true },
-      },
-    },
+    include: { _count: { select: { documents: true } } },
   });
-  let i = 0;
-  for (const company of companies) {
-    await companyFillHelper(company);
-    await wait(100);
-    i++;
-    const percentDone = ((i / companies.length) * 100).toFixed(3);
+
+  // Only process companies that have no documents yet
+  const toFill = companies.filter((c) => c._count.documents === 0);
+  console.log(`Document fill: ${toFill.length} companies need documents (${companies.length - toFill.length} already done)`);
+
+  const BATCH_CONCURRENT = 5; // 5 parallel SEC requests stays well within their 10 req/s limit
+  let done = 0;
+  for (let i = 0; i < toFill.length; i += BATCH_CONCURRENT) {
+    const batch = toFill.slice(i, i + BATCH_CONCURRENT);
+    await Promise.all(batch.map(companyFillHelper));
+    done += batch.length;
+    console.log(`Documents: ${done}/${toFill.length} companies processed (${((done / toFill.length) * 100).toFixed(1)}%)`);
+    await wait(300); // brief pause between batches
   }
-  res.status(200).json({ message: "Successfully Populated database!" });
+
+  res.status(200).json({ message: `Successfully populated ${done} companies` });
 });
 
 // populate company information!!!
@@ -96,39 +100,41 @@ router.post("/companyfill/:cik_number", async (req, res) => {
 });
 
 const companyFillHelper = async (company) => {
-  if (company == null || company._count.documents > 0) {
-    return;
-  }
+  if (company == null || company._count.documents > 0) return;
   const cik = company.cik_number;
   const paddedCik = cik.toString().padStart(10, "0");
-  const response = await fetch(
-    `https://data.sec.gov/submissions/CIK${paddedCik}.json`,
-    {
-      headers: { "User-Agent": "Santi Criado (santiagocriado@meta.com)" },
-    }
-  );
-  const data = await response.json();
-  const filings = data.filings.recent;
-  const length = data.filings.recent.accessionNumber.length;
-  for (let i = 0; i < length; i++) {
-    if (
-      filings.form[i] === FORM_TYPE.tenk ||
-      filings.form[i] === FORM_TYPE.eightk ||
-      filings.form[i] === FORM_TYPE.tenq
-    ) {
-      const url = `https://www.sec.gov/Archives/edgar/data/${cik}/${filings.accessionNumber[
-        i
-      ].replaceAll("-", "")}/${filings.primaryDocument[i]}`;
+  try {
+    const response = await fetch(
+      `https://data.sec.gov/submissions/CIK${paddedCik}.json`,
+      { headers: { "User-Agent": "Santi Criado (santiagocriado@meta.com)" } }
+    );
+    if (!response.ok) return;
+    const data = await response.json();
+    const filings = data.filings.recent;
+    const length = filings.accessionNumber.length;
 
-      const newDocument = await prisma.document.create({
-        data: {
+    const docs = [];
+    for (let i = 0; i < length; i++) {
+      if (
+        filings.form[i] === FORM_TYPE.tenk ||
+        filings.form[i] === FORM_TYPE.eightk ||
+        filings.form[i] === FORM_TYPE.tenq
+      ) {
+        docs.push({
           type: filings.form[i],
-          url,
+          url: `https://www.sec.gov/Archives/edgar/data/${cik}/${filings.accessionNumber[i].replaceAll("-", "")}/${filings.primaryDocument[i]}`,
           filed_date: new Date(filings.filingDate[i]),
           companyId: company.id,
-        },
-      });
+        });
+      }
     }
+
+    if (docs.length > 0) {
+      // skipDuplicates prevents errors if this company is re-processed
+      await prisma.document.createMany({ data: docs, skipDuplicates: true });
+    }
+  } catch (err) {
+    console.error(`Failed to fill ${company.ticker}:`, err?.message);
   }
 };
 

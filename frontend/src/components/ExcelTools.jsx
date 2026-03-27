@@ -64,56 +64,51 @@ const ExcelTools = ({ companyId }) => {
   }
 
   return (
-    <>
-      {!isGenerating && (
+    <div className="flex items-center gap-3">
+      {!isGenerating ? (
         <Popover>
           <PopoverTrigger asChild>
-            <button className="self-end border-black border-2 bg-cyan-300 ml-auto mr-5 pt-5 hover:brightness-75 mt-10 text-black">
-              Generate TCM Model Outline
+            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 text-sm font-semibold transition-all duration-200">
+              ⬇ Download Historical Model
             </button>
           </PopoverTrigger>
-          <PopoverContent
-            className="w-80 bg-cyan-200 mb-3 max-h-60 overflow-auto"
-            side="top"
-          >
+          <PopoverContent className="w-72 bg-[#0f0f14] border border-white/10 shadow-2xl" side="top">
             <div className="grid gap-4">
-              <div className="grid gap-2">
-                <h4 className="leading-none font-bold">Options:</h4>
-                <p className="text-muted-foreground text-sm">
-                  choose specifications:
-                </p>
+              <div>
+                <h4 className="font-semibold text-white text-sm">Historical Model</h4>
+                <p className="text-gray-400 text-xs mt-0.5">Income statement, balance sheet &amp; cash flow — formatted Excel</p>
               </div>
-              <div className="grid gap-2">
-                <div className="grid grid-cols-3 items-center gap-4">
-                  <Label htmlFor="years" className="font-bold">
-                    Years:
-                  </Label>
-                  <Input
-                    id="years"
-                    className="col-span-2 h-8"
-                    onChange={handleChange}
-                    value={formData.years}
-                  />
-                </div>
+              <div className="grid grid-cols-3 items-center gap-3">
+                <Label htmlFor="years" className="text-gray-300 text-sm">Years</Label>
+                <Input
+                  id="years"
+                  type="number"
+                  min="1"
+                  max="8"
+                  className="col-span-2 h-8 bg-white/8 border-white/15 text-white text-sm"
+                  onChange={handleChange}
+                  value={formData.years}
+                />
               </div>
+              <p className="text-xs text-gray-500">Max 8 years of annual data</p>
               <PopoverClose asChild>
                 <button
-                  onClick={(e) => {
-                    beginExcelGeneration(e);
-                  }}
-                  className="bg-cyan-600 text-white hover:scale-110 hover:brightness-120"
+                  onClick={beginExcelGeneration}
+                  className="w-full py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-colors duration-200"
                 >
-                  Begin Generation
+                  Generate &amp; Download
                 </button>
               </PopoverClose>
             </div>
           </PopoverContent>
         </Popover>
+      ) : (
+        <div className="flex items-center gap-2 text-sm text-emerald-400">
+          <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          Generating model…
+        </div>
       )}
-      {isGenerating && (
-        <div className="mr-auto ml-auto rounded-full w-8 h-8 border-3 border-t-transparent border-cyan-200 animate-spin"></div>
-      )}
-    </>
+    </div>
   );
 };
 

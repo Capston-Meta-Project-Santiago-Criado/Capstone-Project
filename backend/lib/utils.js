@@ -1,9 +1,42 @@
 const { PrismaClient } = require("../generated/prisma");
 const prisma = new PrismaClient();
-const { default: yahooFinance } = require("yahoo-finance2");
+const finnhub = require("finnhub");
+const finnhubClient = new finnhub.DefaultApi(process.env.finnhubKey);
+
+const getFinnhubQuote = (ticker) =>
+  new Promise((resolve, reject) => {
+    finnhubClient.quote(ticker, (error, data) => {
+      if (error) return reject(error);
+      resolve({
+        symbol: ticker,
+        regularMarketPrice: data.c,
+        regularMarketChangePercent: data.dp,
+      });
+    });
+  });
+
+const getFinnhubDividends = (ticker, from, to) =>
+  new Promise((resolve) => {
+    finnhubClient.stockDividends(ticker, from, to, (error, data) => {
+      if (error || !data || data.length === 0) return resolve(null);
+      resolve({
+        dates: data.map((d) => new Date(d.date)),
+        amounts: data.map((d) => d.amount),
+      });
+    });
+  });
 
 const wait = (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+// Returns true only during NYSE trading hours: Mon–Fri 9:30 AM–4:00 PM US Eastern
+const isMarketOpen = () => {
+  const etNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const day = etNow.getDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return false;
+  const mins = etNow.getHours() * 60 + etNow.getMinutes();
+  return mins >= 9 * 60 + 30 && mins < 16 * 60;
 };
 
 // constants for getBefore Date
@@ -42,6 +75,9 @@ const MAX_BETWEEN_TIME_PRICE = 1000 * 60 * 90; // 1.5 hr update cycle, don't wan
 
 //used mostly for recommendations
 const updateAllCompanies = async () => {
+  // Don't refresh prices outside market hours — they won't change
+  if (!isMarketOpen()) return;
+
   const mostRecent = await prisma.company.findFirst({
     orderBy: {
       lastUpdate: "desc",
@@ -63,61 +99,31 @@ const updateAllCompanies = async () => {
     if (batchSplit.length == 0) {
       break;
     }
-    const prices = await yahooFinance.quote(
-      batchSplit,
-      { modules: ["price"] },
-      { validateResult: false }
-    );
     const firstDate = formatDate(getBeforeDate(""));
     const secondDate = formatDate(new Date());
-    const options = {
-      period1: firstDate,
-      period2: secondDate,
-      events: "dividends",
-    };
-    const dividends = [];
     for (let ticker of batchSplit) {
       await wait(350);
       try {
-        const rep = (await yahooFinance.chart(ticker, options)).events
-          .dividends;
-        dividends.push(rep);
+        const quote = await getFinnhubQuote(ticker);
+        const dividendData = await getFinnhubDividends(ticker, firstDate, secondDate);
+        await prisma.company.update({
+          where: { ticker },
+          data: {
+            daily_price: quote.regularMarketPrice,
+            daily_price_change: quote.regularMarketChangePercent,
+            lastUpdate: new Date(),
+            ...(dividendData && {
+              dividends: dividendData.amounts,
+              dividendsDates: dividendData.dates,
+            }),
+          },
+        });
       } catch (err) {
-        dividends.push(null);
+        continue;
       }
     }
     currentInd += BATCH_SIZE;
-    for (let i = 0; i < prices.length; i++) {
-      const company = prices[i];
-      if (dividends[i] == null) {
-        await prisma.company.update({
-          where: {
-            ticker: company.symbol,
-          },
-          data: {
-            daily_price: company.regularMarketPrice,
-            daily_price_change: company.regularMarketChangePercent,
-            lastUpdate: new Date(),
-          },
-        });
-      } else {
-        const dividendsDateList = dividends[i].map((val) => val.date);
-        const dividendsAmountList = dividends[i].map((val) => val.amount);
-        await prisma.company.update({
-          where: {
-            ticker: company.symbol,
-          },
-          data: {
-            daily_price: company.regularMarketPrice,
-            daily_price_change: company.regularMarketChangePercent,
-            lastUpdate: new Date(),
-            dividends: dividendsAmountList,
-            dividendsDates: dividendsDateList,
-          },
-        });
-      }
-    }
   }
 };
 
-module.exports = { formatDate, getBeforeDate, updateAllCompanies, wait };
+module.exports = { formatDate, getBeforeDate, updateAllCompanies, wait, isMarketOpen };

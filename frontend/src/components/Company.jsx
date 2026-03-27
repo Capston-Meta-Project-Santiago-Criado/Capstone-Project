@@ -8,57 +8,78 @@ const Company = ({ companyFacts, mode }) => {
   const { setSelectedId } = UserInfo();
   const navigate = useNavigate();
 
+  const isPositive = companyFacts.dailyChange >= 0;
+
   const handleView = () => {
     navigate(`/CompanyInfo/${companyFacts.id}`);
+    setSelectedId(companyFacts.id);
   };
-
-  // stylings
-  const classMode = cn(
-    "flex flex-row rounded-lg h-40 mr-5 ml-1 pl-5 shadow-[0px_0px_45px_10px_rgba(223,215,217,.1)] hover:cursor-pointer hover:scale-110 transition-transform duration-300 ease-in-out",
-    {
-      "w-50s max-w-3/5": mode === MODE_FIT,
-      "mb-5": mode === MODE_FIT,
-      "mb-15": mode !== MODE_FIT,
-      "w-80s": mode !== MODE_FIT,
-      "bg-indigo-50": mode !== MODE_FIT,
-      "bg-green-300": mode === MODE_FIT && companyFacts.dailyChange >= 0,
-      "bg-red-300": mode === MODE_FIT && companyFacts.dailyChange < 0,
-    }
-  );
-  const titleSize = cn("font-bold w-.6 ml-6", {
-    "text-xl": mode === MODE_FIT,
-    "text-3xl": mode !== MODE_FIT,
-  });
-  const factsSize = cn("flex flex-col justify-center items-center w-1/2 ", {
-    "text-xl": mode === MODE_FIT,
-    "text-2xl": mode !== MODE_FIT,
-  });
-  const factsStyling = cn("font-bold", {
-    "text-red-800": companyFacts.dailyChange < 0,
-    "text-green-800": companyFacts.dailyChange > 0,
-  });
 
   return (
     <div
-      onClick={() => {
-        handleView();
-        setSelectedId(companyFacts.id);
-      }}
-      className={classMode}
+      onClick={handleView}
+      className={cn(
+        "relative flex flex-col justify-between rounded-xl cursor-pointer",
+        "transition-all duration-300 ease-in-out p-4",
+        "border hover:scale-105 hover:-translate-y-1",
+        {
+          // home page cards
+          "w-52 h-36 mb-4 mr-3 bg-[#0f0f14]": mode !== MODE_FIT,
+          "border-emerald-500/25 hover:border-emerald-400/60 hover:shadow-[0_4px_24px_rgba(52,211,153,0.15)]":
+            mode !== MODE_FIT && isPositive,
+          "border-red-500/25 hover:border-red-400/60 hover:shadow-[0_4px_24px_rgba(239,68,68,0.15)]":
+            mode !== MODE_FIT && !isPositive,
+          // portfolio fit cards
+          "w-44 h-28 mb-2 mr-2 bg-[#0f0f14]": mode === MODE_FIT,
+          "border-emerald-500/20 hover:border-emerald-400/50": mode === MODE_FIT && isPositive,
+          "border-red-500/20 hover:border-red-400/50": mode === MODE_FIT && !isPositive,
+        }
+      )}
     >
-      <div
-        id="title"
-        className="flex flex-col justify-center items-center w-1/2 p-0"
-      >
-        <h4 className={titleSize}>{companyFacts.name}</h4>
+      {/* top row: ticker badge + direction arrow */}
+      <div className="flex items-start justify-between">
+        <span className="text-[11px] font-mono font-bold tracking-wider text-gray-400 bg-white/5 px-1.5 py-0.5 rounded">
+          {companyFacts.ticker}
+        </span>
+        <span
+          className={cn("text-xs font-bold", {
+            "text-emerald-400": isPositive,
+            "text-red-400": !isPositive,
+          })}
+        >
+          {isPositive ? "▲" : "▼"}
+        </span>
       </div>
-      <div className={factsSize}>
-        <h5 className="font-bold text-cyan-600 p-0">{`(${companyFacts.ticker})`}</h5>
-        <h5 className={factsStyling}>{`$${companyFacts.daily}`}</h5>
-        <h5 className={factsStyling}>
-          {companyFacts.dailyChange}
-          <span>%</span>
-        </h5>
+
+      {/* company name */}
+      <p
+        className={cn("font-semibold text-white leading-tight truncate", {
+          "text-sm": mode === MODE_FIT,
+          "text-[15px]": mode !== MODE_FIT,
+        })}
+      >
+        {companyFacts.name}
+      </p>
+
+      {/* price + change */}
+      <div className="flex items-end justify-between">
+        <span
+          className={cn("font-bold text-white", {
+            "text-lg": mode !== MODE_FIT,
+            "text-base": mode === MODE_FIT,
+          })}
+        >
+          ${companyFacts.daily}
+        </span>
+        <span
+          className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", {
+            "bg-emerald-900/50 text-emerald-400": isPositive,
+            "bg-red-900/50 text-red-400": !isPositive,
+          })}
+        >
+          {isPositive ? "+" : ""}
+          {companyFacts.dailyChange}%
+        </span>
       </div>
     </div>
   );

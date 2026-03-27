@@ -92,6 +92,9 @@ app.use((req, res, next) => {
     "/company",
     "/getNotes",
     "/models",
+    "/history",
+    "/performance",
+    "/populators",
   ];
   if (publicRoutes.some((route) => path.includes(route))) {
     next();
@@ -121,6 +124,12 @@ app.use("/company", companyRoutes);
 app.use("/recommendations", recommendationRoutes);
 app.use("/notifications", notificationsRoutes);
 app.use("/excel", excelRoutes);
+
+// Global error handler — always return JSON, never HTML
+app.use((err, req, res, next) => {
+  console.error(err?.message ?? err);
+  res.status(err?.status ?? err?.statusCode ?? 500).json({ error: err?.message ?? "Internal Server Error" });
+});
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

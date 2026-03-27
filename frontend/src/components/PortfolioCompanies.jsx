@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import cn from "classnames";
 import { toPercentage } from "../lib/utils";
 import { EDITOR_PERMS } from "../lib/constants";
+
 const PortfolioCompanies = ({
   companiesStockData,
   handleDelete,
@@ -15,94 +16,87 @@ const PortfolioCompanies = ({
   const handleClick = (id) => {
     navigate(`/CompanyInfo/${id}`);
   };
+
   return (
-    <div className="bg-indigo-50 h-90 w-16/20 ml-40 rounded-md overflow-auto">
-      <div className="flex flex-row justify-center">
-        <h3 className="font-bold text-2xl text-center mt-3">
-          Portfolio Companies
-        </h3>
+    <div className="bg-[#0f0f14] border border-white/8 rounded-xl w-full overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
+        <h3 className="font-bold text-lg text-white flex-1">Portfolio Companies</h3>
         {permission === EDITOR_PERMS &&
           companiesData != null &&
-          companiesData.length != 0 && (
-            <Pencil
-              className="mt-5 ml-4 border-2 h-5 w-5 rounded-sm hover:scale-110 transition-transform duration-300 ease-in-out hover:cursor-pointer hover:brightness-90"
-              onClick={() => {
-                setIsEditingMode((prev) => !prev);
-              }}
-            />
+          companiesData.length !== 0 && (
+            <button
+              onClick={() => setIsEditingMode((prev) => !prev)}
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200",
+                {
+                  "bg-emerald-900/40 text-emerald-400 border-emerald-500/30": isEditingMode,
+                  "bg-white/5 text-gray-400 border-white/10 hover:text-white hover:bg-white/8": !isEditingMode,
+                }
+              )}
+            >
+              <Pencil className="w-3 h-3" />
+              {isEditingMode ? "Done" : "Edit"}
+            </button>
           )}
       </div>
-      <div className="flex flex-col h-full items-center">
+      <div className="flex flex-col gap-1 p-3 max-h-80 overflow-auto">
         {companiesStockData == null && (
-          <img className="h-20 w-20 mt-10" src="https://i.gifer.com/ZKZg.gif" />
+          <div className="flex items-center justify-center py-10">
+            <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+          </div>
         )}
-        {companiesStockData != null && companiesStockData.length == 0 && (
-          <p>No Companies to display</p>
+        {companiesStockData != null && companiesStockData.length === 0 && (
+          <p className="text-gray-500 text-sm text-center py-6">No companies yet</p>
         )}
         {companiesStockData != null &&
           companiesStockData.length !== 0 &&
           companiesData != null &&
           companiesData.map((value, ind) => {
-            if (value == null || companiesStockData[ind] == null) {
-              return;
-            }
+            if (value == null || companiesStockData[ind] == null) return null;
             const percentChange = toPercentage(
               companiesStockData[ind].price,
               companiesStockData[ind].dayStart
             );
+            const isPositive = percentChange >= 0;
 
-            // handle dynamic styling with repeated classes!
-            const companyClass = cn(
-              "w-full h-full rounded-sm mt-2 hover:scale-103 transition-transform duration-300 ease-in-out hover:cursor-pointer hover:brightness-90 flex flex-row",
-              {
-                "bg-red-200": percentChange < 0,
-                "bg-red-400": percentChange < -5,
-                "bg-green-400": percentChange > 5,
-                "bg-green-200": percentChange >= 0 && percentChange <= 5,
-              }
-            );
             return (
-              <div
-                className="flex flex-row justify-center h-5/50 w-9/10 m-1"
-                key={value.id}
-              >
+              <div key={value.id} className="flex items-center gap-2">
                 <div
-                  className={companyClass}
-                  onClick={() => {
-                    handleClick(value.id);
-                  }}
-                >
-                  <h5 className="font-bold ml-2 pt-1 text-lg truncate w-3/5">
-                    {value.name} ({value.ticker})
-                  </h5>
-                  <h5
-                    className={
-                      percentChange < 0
-                        ? " font-bold pt-1 text-lg text-red-600 mr-2 ml-auto"
-                        : " font-bold pt-1 text-lg text-green-800 mr-2 ml-auto"
+                  onClick={() => handleClick(value.id)}
+                  className={cn(
+                    "flex-1 flex items-center justify-between px-3 py-2.5 rounded-lg border cursor-pointer transition-all duration-200",
+                    {
+                      "bg-emerald-900/20 border-emerald-500/20 hover:bg-emerald-900/30": isPositive,
+                      "bg-red-900/20 border-red-500/20 hover:bg-red-900/30": !isPositive,
                     }
-                  >
-                    ${companiesStockData[ind].price.toFixed(2)} |{" "}
-                    {percentChange}%
-                  </h5>
-                </div>
-                <div>
-                  {isEditingMode ? (
-                    <X
-                      className=" mt-4 ml-1 hover:scale-115 transition-transform duration-200 ease-in-out hover:cursor-pointer"
-                      onClick={() => {
-                        handleDelete(value.id);
-                      }}
-                    />
-                  ) : (
-                    ""
                   )}
+                >
+                  <span className="font-semibold text-white text-sm truncate max-w-[55%]">
+                    {value.name}
+                    <span className="text-gray-400 font-normal ml-1.5 text-xs">({value.ticker})</span>
+                  </span>
+                  <span className={cn("text-sm font-bold", {
+                    "text-emerald-400": isPositive,
+                    "text-red-400": !isPositive,
+                  })}>
+                    ${companiesStockData[ind].price.toFixed(2)}
+                    <span className="text-xs ml-1.5 opacity-80">
+                      {isPositive ? "+" : ""}{percentChange}%
+                    </span>
+                  </span>
                 </div>
+                {isEditingMode && (
+                  <button
+                    onClick={() => handleDelete(value.id)}
+                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-900/30 hover:text-red-300 transition-all duration-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             );
           })}
       </div>
-      ;
     </div>
   );
 };

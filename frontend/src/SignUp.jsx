@@ -18,7 +18,7 @@ const SignUp = () => {
     username: "",
     email: "",
   });
-  const { setIsLoggedIn, setFullName } = UserInfo();
+  const { setIsLoggedIn, setFullName, setIsGuest } = UserInfo();
   const { sectorsSelected, industriesSelected } = SignUpInfoContext();
   const [signUpPressed, setSignUpPressed] = useState(false);
   const [submitResult, setSubmitResult] = useState(null);
@@ -89,6 +89,7 @@ const SignUp = () => {
       setSubmitResult(RESULT_SUCCESS);
       await wait(500);
       await handleLogin(formData, setSubmitResult, setIsLoggedIn, setFullName);
+      setIsGuest(false);
       navigate("/");
     } else {
       const s = await response.json();

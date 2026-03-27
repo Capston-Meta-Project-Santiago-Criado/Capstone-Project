@@ -39,6 +39,7 @@ const CompanyList = () => {
         credentials: "include",
       }
     );
+    if (!stockResponse.ok) return;
     const stockData = await stockResponse.json();
     setExploreCompaniesPrices(stockData);
   };
@@ -49,12 +50,14 @@ const CompanyList = () => {
 
   if (exploreCompaniesPrices[0] === PLACEHOLDER) {
     return (
-      <img className="w-40 h-40 mt-10" src="https://i.gifer.com/ZKZg.gif" />
+      <div className="flex items-center justify-center w-full py-16">
+        <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-row flex-wrap mr-30 ml-30 justify-center h-4/5">
+    <div className="flex flex-row flex-wrap px-8 justify-start gap-3 w-full max-w-5xl">
       {exploreCompanies.map((value, ind) => {
         if (exploreCompaniesPrices[ind] == null) {
           return;

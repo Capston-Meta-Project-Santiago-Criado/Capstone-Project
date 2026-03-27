@@ -38,56 +38,52 @@ const NewPortfolioModal = ({ newPortfolio }) => {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="bg-cyan-400 m-3">
-          New Portfolio
-        </Button>
+        <button className="mt-4 px-5 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 hover:border-emerald-500/40 text-sm font-semibold transition-all duration-200">
+          + New Portfolio
+        </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 bg-indigo-200 m-3" side="bottom">
+      <PopoverContent className="w-80 bg-[#0f0f14] border border-white/10" side="bottom">
         <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="leading-none font-medium">Portfolio</h4>
-            <p className="text-muted-foreground text-sm">
-              Set initial information
-            </p>
+          <div className="space-y-1">
+            <h4 className="leading-none font-semibold text-white">New Portfolio</h4>
+            <p className="text-gray-400 text-sm">Set the initial information</p>
           </div>
           <div className="grid gap-2">
             <div className="grid grid-cols-3 items-center gap-4">
-              <Label htmlFor="Name">Name</Label>
+              <Label htmlFor="Name" className="text-gray-300">Name</Label>
               <Input
                 id="name"
                 placeholder="Portfolio Name"
-                className="col-span-2 h-8"
+                className="col-span-2 h-8 bg-white/8 border-white/15 text-white placeholder:text-gray-500 focus:border-emerald-500/50"
                 onChange={handleChange}
               />
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-gray-300">Description</Label>
               <Input
                 id="description"
                 placeholder="Description"
-                className="col-span-2 h-8"
+                className="col-span-2 h-8 bg-white/8 border-white/15 text-white placeholder:text-gray-500 focus:border-emerald-500/50"
                 onChange={handleChange}
               />
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
-              <Label htmlFor="isPublic">Public?</Label>
+              <Label htmlFor="isPublic" className="text-gray-300">Public?</Label>
               <Checkbox
                 id="isPublic"
                 className="col-span-2 h-8"
                 checked={formData.isPublic}
                 onChange={handlePublicChange}
+                sx={{ color: "white", "&.Mui-checked": { color: "white" }, padding: 0 }}
               />
             </div>
             <PopoverClose asChild>
-              <Button
-                variant="outline"
-                className="bg-indigo-400"
-                onClick={() => {
-                  newPortfolio(formData);
-                }}
+              <button
+                className="w-full py-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 text-sm font-semibold transition-all duration-200"
+                onClick={() => newPortfolio(formData)}
               >
                 Create Portfolio
-              </Button>
+              </button>
             </PopoverClose>
           </div>
         </div>
@@ -133,12 +129,14 @@ const PortfolioList = () => {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="w-full px-6 pb-10">
       {portfolios == null ? (
-        <h2>Loading...</h2>
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        </div>
       ) : (
-        portfolios.map((portfolio) => {
-          return (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {portfolios.map((portfolio) => (
             <PortfolioCard
               key={portfolio.id}
               name={portfolio.name}
@@ -148,10 +146,12 @@ const PortfolioList = () => {
               setPortfolios={setPortfolios}
               canDelete={true}
             />
-          );
-        })
+          ))}
+        </div>
       )}
-      <NewPortfolioModal newPortfolio={newPortfolio} />
+      <div className="flex justify-center mt-6">
+        <NewPortfolioModal newPortfolio={newPortfolio} />
+      </div>
     </div>
   );
 };

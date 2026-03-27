@@ -1,107 +1,71 @@
-import Input from "@mui/material/Input";
-import InputAdornment from "@mui/material/InputAdornment"; // mui library
-import SearchIcon from "@mui/icons-material/Search"; // mui library
 import { useState } from "react";
 import { BASE_URL } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { UserInfo } from "../context/UserContext";
+import { Search } from "lucide-react";
 
-const SearchResultsBar = ({ results, setSearchQuery, setSearchResults }) => {
+const SearchBar = () => {
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const { setSelectedId } = UserInfo();
   const navigate = useNavigate();
-  if (results.length === 0) {
-    return;
-  }
+
+  const handleInputChange = async (e) => {
+    setSearchQuery(e.target.value);
+    if (!e.target.value) {
+      setSearchResults([]);
+      return;
+    }
+    const response = await fetch(
+      `${BASE_URL}/getters/search/${e.target.value}`,
+      { credentials: "include" }
+    );
+    if (response.ok) {
+      setSearchResults(await response.json());
+    }
+  };
+
+  const handleSelect = (value) => {
+    const url =
+      value.isPublic != null
+        ? `/portfolios/${value.id}`
+        : `/CompanyInfo/${value.id}`;
+    setSelectedId(value.id);
+    navigate(url);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
   return (
-    <div className="-mt-4">
-      {" "}
-      {results.map((value) => {
-        if (value.isPublic == true) {
-          // is a portfolio
-          return (
+    <div className="relative w-96">
+      <div className="flex items-center gap-2 bg-white/6 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-emerald-500/40 focus-within:bg-white/8 transition-all duration-200">
+        <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+        <input
+          type="text"
+          placeholder="Search companies or portfolios…"
+          className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-full"
+          value={searchQuery}
+          onChange={handleInputChange}
+          autoComplete="off"
+        />
+      </div>
+      {searchResults.length > 0 && (
+        <div className="absolute top-full left-0 right-0 mt-1 bg-[#0f0f14] border border-white/10 rounded-lg overflow-hidden z-[60] shadow-2xl">
+          {searchResults.map((value) => (
             <div
               key={value.id}
-              className="bg-indigo-100 ounded-b-sm hover:cursor-pointer hover:brightness-95 z-100"
-              onClick={() => {
-                navigate(`/portfolios/${value.id}`);
-                setSelectedId(value.id);
-                setSearchQuery("");
-                setSearchResults([]);
-              }}
+              className="px-3 py-2.5 text-sm text-gray-300 hover:bg-white/6 hover:text-white cursor-pointer transition-colors duration-150 border-b border-white/5 last:border-0"
+              onClick={() => handleSelect(value)}
             >
-              <p className="ml-2">{`${value.name} (portfolio - by ${value.user.username})`}</p>
+              {value.isPublic != null
+                ? `${value.name} — portfolio by ${value.user?.username}`
+                : `${value.name} (${value.ticker})`}
             </div>
-          );
-        }
-        return (
-          <div
-            key={value.id}
-            className="bg-indigo-100 ounded-b-sm hover:cursor-pointer hover:brightness-95 z-10"
-            onClick={() => {
-              navigate(`/CompanyInfo/${value.id}`);
-              setSelectedId(value.id);
-              setSearchQuery("");
-              setSearchResults([]);
-            }}
-          >
-            <p className="ml-2">{`${value.name} (${value.ticker})`}</p>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
-const Searchbar = () => {
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleInputChange = async (e) => {
-    setSearchQuery(e.target.value);
-    if (e.target.value == "") {
-      setSearchResults([]);
-    } else {
-      const response = await fetch(
-        `${BASE_URL}/getters/search/${e.target.value}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSearchResults(data);
-      }
-    }
-  };
-  return (
-    <>
-      <div className="flex flex-col justify-center mt-4 mr-auto ml-auto fixed z-15">
-        <div className="pb-4">
-          <Input
-            id="outlined-basic"
-            label="search"
-            size="large"
-            placeholder="Search For Companies (name or ticker), Portfolios (name or user)"
-            sx={{ width: "550px" }}
-            startAdornment={
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            }
-            value={searchQuery}
-            onChange={handleInputChange}
-            autoComplete="off"
-          />
-        </div>
-        <SearchResultsBar
-          results={searchResults}
-          setSearchQuery={setSearchQuery}
-          setSearchResults={setSearchResults}
-        />
-      </div>
-    </>
-  );
-};
-
-export default Searchbar;
+export default SearchBar;

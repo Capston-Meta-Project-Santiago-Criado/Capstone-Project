@@ -4,8 +4,32 @@ const prisma = new PrismaClient();
 const express = require("express");
 
 const { BadParams, DoesNotExist } = require("./middleware/CustomErrors");
-const { default: yahooFinance } = require("yahoo-finance2");
 const { getBeforeDate } = require("../lib/utils");
+const { fetchHistorical, toDateStr } = require("../lib/yahooCache");
+
+const getCandles = async (ticker, from, to) => {
+  try {
+    const result = await fetchHistorical(ticker, from, to);
+    if (!result?.length) return null;
+    const valid = result.filter((q) => q.close != null).map((q) => ({ close: q.close }));
+    return valid.length >= 2 ? valid : null;
+  } catch {
+    return null;
+  }
+};
+
+const getCandlesWithDates = async (ticker, from, to) => {
+  try {
+    const result = await fetchHistorical(ticker, from, to);
+    if (!result?.length) return null;
+    const valid = result
+      .filter((q) => q.close != null && q.date != null)
+      .map((q) => ({ date: toDateStr(q.date), close: q.close }));
+    return valid.length >= 2 ? valid : null;
+  } catch {
+    return null;
+  }
+};
 
 const app = express();
 app.use(express.json());
@@ -197,6 +221,68 @@ router.put("/addMany/:companyId", async (req, res, next) => {
   res.status(200).json({ message: "added" });
 });
 
+// portfolio historical value time series
+router.get("/history/:id/:timeFrame", async (req, res) => {
+  const portfolioId = parseInt(req.params.id);
+  const timeFrame = req.params.timeFrame;
+  try {
+    const portfolio = await prisma.portfolio.findUnique({ where: { id: portfolioId } });
+    if (!portfolio) return res.status(404).json({ error: "not found" });
+
+    const companies = await prisma.company.findMany({
+      where: { id: { in: portfolio.companiesIds } },
+    });
+    if (companies.length === 0) return res.json([]);
+
+    const from = getBeforeDate(timeFrame);
+    const to = new Date();
+
+    const allSeries = await Promise.all(
+      companies.map(async (company) => {
+        const idx = portfolio.companiesIds.indexOf(company.id);
+        const shares = portfolio.companiesStocks[idx] || 1;
+        const candles = await getCandlesWithDates(company.ticker, from, to);
+        return candles ? { candles, shares } : null;
+      })
+    );
+
+    const validSeries = allSeries.filter(Boolean);
+    if (validSeries.length === 0) return res.json([]);
+
+    const minLen = Math.min(...validSeries.map((s) => s.candles.length));
+    const result = [];
+    for (let i = 0; i < minLen; i++) {
+      let value = 0;
+      let date = null;
+      for (const series of validSeries) {
+        const candleIdx = series.candles.length - minLen + i;
+        value += series.candles[candleIdx].close * series.shares;
+        if (date == null) date = series.candles[candleIdx].date;
+      }
+      result.push({ date, value: parseFloat(value.toFixed(2)) });
+    }
+
+    // Append today's point using daily_price so the chart end matches the live portfolio value
+    const todayStr = toDateStr(new Date());
+    if (result.length === 0 || result[result.length - 1].date !== todayStr) {
+      let todayValue = 0;
+      for (const company of companies) {
+        if (!company.daily_price) continue;
+        const idx = portfolio.companiesIds.indexOf(company.id);
+        const shares = portfolio.companiesStocks[idx] || 1;
+        todayValue += company.daily_price * shares;
+      }
+      if (todayValue > 0) {
+        result.push({ date: todayStr, value: parseFloat(todayValue.toFixed(2)) });
+      }
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // x largest swings in portfolio, req period can be: "Day", "Week", "Month", "Year"
 router.get("/swings/:portfolioId/:timeFrame", async (req, res, next) => {
   const timeFrame = req.params.timeFrame;
@@ -210,36 +296,27 @@ router.get("/swings/:portfolioId/:timeFrame", async (req, res, next) => {
   if (portfolio == null) {
     next(new BadParams("portfolio does not exist"));
   }
-  // go through each company in the array, at the end sort by greatest change!
-  const idArray = portfolio.companiesIds;
-  for (let id of idArray) {
-    company = await prisma.company.findUnique({
-      where: {
-        id,
-      },
-    });
-    const todayString = new Date();
-    const earlierString = getBeforeDate(timeFrame);
-    const queryOptions = {
-      period1: earlierString,
-      period2: todayString,
-      interval: "1d",
-    };
-    const result = await yahooFinance.historical(company.ticker, queryOptions);
-    if (result) {
-      firstVal = result[0];
-      finalVal = result.pop();
-      retArray.push({
+  const todayString = new Date();
+  const earlierString = getBeforeDate(timeFrame);
+  const companies = await prisma.company.findMany({ where: { id: { in: portfolio.companiesIds } } });
+
+  retArray = (await Promise.all(
+    companies.map(async (company) => {
+      const result = await getCandles(company.ticker, earlierString, todayString);
+      if (!result) return null;
+      const firstVal = result[0];
+      const finalVal = result[result.length - 1];
+      return {
         id: company.id,
         firstVal,
         finalVal,
-        percentChange:
-          firstVal != null && finalVal != null
-            ? ((finalVal.close - firstVal.close) / firstVal.close) * 100
-            : 0,
-      });
-    }
-  }
+        percentChange: firstVal != null && finalVal != null
+          ? ((finalVal.close - firstVal.close) / firstVal.close) * 100
+          : 0,
+      };
+    })
+  )).filter(Boolean);
+
   retArray.sort((a, b) => compareByPercentChange(a, b));
   res.json(retArray);
 });
@@ -324,6 +401,44 @@ router.post("/setNotes/:id", async (req, res, next) => {
     next(new BadParams("no portfolio with such Id"));
   }
   res.json(portfolio.notesDoc);
+});
+
+// daily performance for a portfolio
+router.get("/performance/:id", async (req, res) => {
+  const portfolioId = parseInt(req.params.id);
+  try {
+    const portfolio = await prisma.portfolio.findUnique({
+      where: { id: portfolioId },
+    });
+    if (!portfolio) return res.status(404).json({ error: "not found" });
+
+    const companies = await prisma.company.findMany({
+      where: { id: { in: portfolio.companiesIds } },
+    });
+
+    let totalValue = 0;
+    let totalPrevValue = 0;
+    for (const company of companies) {
+      const idx = portfolio.companiesIds.indexOf(company.id);
+      const shares = portfolio.companiesStocks[idx] || 1;
+      if (company.daily_price > 0) {
+        const prevClose = company.daily_price_change !== 0
+          ? company.daily_price / (1 + company.daily_price_change / 100)
+          : company.daily_price;
+        totalValue += company.daily_price * shares;
+        totalPrevValue += prevClose * shares;
+      }
+    }
+
+    const dailyChange =
+      totalPrevValue > 0
+        ? parseFloat(((totalValue - totalPrevValue) / totalPrevValue * 100).toFixed(2))
+        : 0;
+
+    res.json({ totalValue: totalValue.toFixed(2), dailyChange });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

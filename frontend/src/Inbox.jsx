@@ -1,4 +1,3 @@
-import SearchBar from "./components/SearchBar";
 import InboxList from "./components/InboxList";
 import { BASE_URL } from "./lib/utils";
 import { useEffect } from "react";
@@ -16,14 +15,11 @@ const Inbox = () => {
     resetNotifications();
   }, []);
   return (
-    <>
-      <main className="w-full">
-        <div className="flex flex-col items-center">
-          <SearchBar />
-          <InboxList />
-        </div>
-      </main>
-    </>
+    <main className="w-full">
+      <div className="flex flex-col items-center">
+        <InboxList />
+      </div>
+    </main>
   );
 };
 

@@ -24,12 +24,14 @@ const PublicPortfolios = () => {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center">
+    <div className="w-full px-8 pb-10">
       {PublicPortfolios == null ? (
-        <h2>Loading...</h2>
+        <div className="flex items-center justify-center py-12">
+          <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        </div>
       ) : (
-        PublicPortfolios.map((portfolio) => {
-          return (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {PublicPortfolios.map((portfolio) => (
             <PortfolioCard
               key={portfolio.id}
               name={portfolio.name}
@@ -39,8 +41,8 @@ const PublicPortfolios = () => {
               canDelete={false}
               creator={portfolio.user.username}
             />
-          );
-        })
+          ))}
+        </div>
       )}
     </div>
   );

@@ -3,10 +3,9 @@ import {
   PopoverContent,
   PopoverTrigger,
   PopoverClose,
-} from "./ui/popover"; // popovers from shadcn,
+} from "./ui/popover";
 
-import cn from "classnames";
-
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../lib/utils";
 import { useParams } from "react-router-dom";
@@ -22,69 +21,53 @@ export const DeleteButton = ({ deleteCard, isCard }) => {
   };
 
   const navigate = useNavigate();
-  const className = cn("border-2 bg-red-400 pt-5 hover:brightness-75 m-10", {
-    "ml-auto": isCard === true,
-    "ml-auto mr-auto": isCard === false,
-  });
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
-          className={className}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-900/30 text-red-400 border border-red-500/20 hover:bg-red-900/50 hover:border-red-500/40 transition-all duration-200"
+          onClick={(e) => e.stopPropagation()}
         >
           Delete
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-60 bg-red-200 m-5" side="top">
-        <div className="grid gap-4">
-          <div className="grid gap-2">
-            <h2 className="font-medium text-center mb-0 p-0">
-              Delete Portfolio Confirmation
-            </h2>
-            <span className="font-bold text-center mt-0 p-0">
-              (all data will be lost)
-            </span>
-            <PopoverClose asChild>
-              <button
-                variant="outline"
-                className="bg-red-700 hover:scale-115 hover:brightness-120  text-white"
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  if (isCard) {
-                    deleteCard(e);
-                  } else {
-                    await deletePortfolio();
-                    navigate("/portfolios");
-                  }
-                }}
-              >
-                Delete All Data
-              </button>
-            </PopoverClose>
-          </div>
+      <PopoverContent className="w-60 bg-[#0f0f14] border border-white/10 m-2" side="top">
+        <div className="grid gap-3">
+          <h2 className="font-semibold text-white text-center text-sm">Delete Portfolio?</h2>
+          <p className="text-xs text-gray-400 text-center">All data will be permanently lost.</p>
+          <PopoverClose asChild>
+            <button
+              className="w-full py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors duration-200"
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (isCard) {
+                  deleteCard(e);
+                } else {
+                  await deletePortfolio();
+                  navigate("/portfolios");
+                }
+              }}
+            >
+              Confirm Delete
+            </button>
+          </PopoverClose>
         </div>
       </PopoverContent>
     </Popover>
   );
 };
 
-const PortfolioCard = ({
-  id,
-  name,
-  description,
-  setPortfolios,
-  canDelete,
-  creator,
-}) => {
+const PortfolioCard = ({ id, name, description, setPortfolios, canDelete, creator }) => {
   const navigate = useNavigate();
+  const [performance, setPerformance] = useState(null);
 
-  const portfolioClicked = () => {
-    navigate(`/portfolios/${id}`);
-  };
+  useEffect(() => {
+    fetch(`${BASE_URL}/portfolios/performance/${id}`, { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setPerformance(data.dailyChange); })
+      .catch(() => {});
+  }, [id]);
 
   const deleteCard = async () => {
     await fetch(`${BASE_URL}/portfolios/${id}`, {
@@ -96,25 +79,39 @@ const PortfolioCard = ({
 
   return (
     <div
-      className="h-30 w-200 bg-indigo-50 m-4 rounded-md hover:cursor-pointer hover:scale-105 transition-transform duration-300 ease-in-out"
-      onClick={portfolioClicked}
+      className="w-full bg-[#0f0f14] border border-white/8 rounded-xl p-5 cursor-pointer hover:border-white/15 hover:bg-[#12121a] transition-all duration-200"
+      onClick={() => navigate(`/portfolios/${id}`)}
     >
-      <div className="flex flex-row">
-        <div className="flex flex-col justify-center items-start w-1/2">
-          <h2 className="text-3xl font-bold mt-4 ml-4 ">{name}</h2>
-          <p className="ml-5">{description}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-white truncate">{name}</h2>
+          {description && (
+            <p className="text-sm text-gray-400 mt-1 truncate">{description}</p>
+          )}
+          {creator && (
+            <p className="text-xs text-gray-500 mt-2">
+              by <span className="text-gray-300 font-medium">{creator}</span>
+            </p>
+          )}
         </div>
-        {canDelete === true && (
-          <DeleteButton deleteCard={deleteCard} isCard={true}></DeleteButton>
-        )}
-        {creator != null && (
-          <p className="self-baseline-last ml-auto mr-5">
-            {" "}
-            <span className="font-bold"> Owned by: </span> {creator}
-          </p>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {performance !== null && (
+            <span
+              className={`text-xs font-bold px-2.5 py-1 rounded-lg border ${
+                performance >= 0
+                  ? "bg-emerald-900/40 text-emerald-400 border-emerald-500/30"
+                  : "bg-red-900/40 text-red-400 border-red-500/30"
+              }`}
+            >
+              {performance >= 0 ? "▲ +" : "▼ "}
+              {performance}% today
+            </span>
+          )}
+          {canDelete && <DeleteButton deleteCard={deleteCard} isCard={true} />}
+        </div>
       </div>
     </div>
   );
 };
+
 export default PortfolioCard;

@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { BASE_URL } from "../lib/utils";
 
 const InboxList = () => {
-  const [allUserNotifications, setAllUserNotifications] = useState();
+  const [allUserNotifications, setAllUserNotifications] = useState([]);
 
   useEffect(() => {
     const getNotifications = async () => {
@@ -11,6 +11,7 @@ const InboxList = () => {
         method: "GET",
         credentials: "include",
       });
+      if (!response.ok) return;
       setAllUserNotifications(await response.json());
     };
     getNotifications();

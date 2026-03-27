@@ -1,4 +1,3 @@
-import SearchBar from "./components/SearchBar";
 import { useState, useEffect } from "react";
 import { BASE_URL } from "./lib/utils";
 import { useParams, useNavigate } from "react-router-dom";
@@ -27,23 +26,14 @@ const PortfolioInfo = () => {
   const [isPublic, setPublicButton] = useState(null);
   const [viewerPermissions, setViewerPermissions] = useState(null);
   const [portfolioValue, setPortfolioValue] = useState(0);
+  const [dailyChange, setDailyChange] = useState(null);
   const navigate = useNavigate();
-  const publicButtonClass = cn(
-    "border-2 border-white text-white ml-35 bg-gray-800 mt-5 hover:cursor-pointer hover:scale-110 hover:brightness-110",
-    {
-      "bg-pink-600": isPublic === true,
-      "bg-green-600": isPublic === false,
-    }
-  );
 
   const getUserPermissions = async () => {
-    const response = await fetch(
-      `${BASE_URL}/portfolios/permissions/user/${id}`,
-      {
-        method: "GET",
-        credentials: "include",
-      }
-    );
+    const response = await fetch(`${BASE_URL}/portfolios/permissions/user/${id}`, {
+      method: "GET",
+      credentials: "include",
+    });
     const data = await response.json();
     if (data.owner == null) {
       setIsLoadTried(true);
@@ -60,11 +50,7 @@ const PortfolioInfo = () => {
   };
 
   const handlePublic = async () => {
-    if (!isPublic) {
-      setPublicButton(true);
-    } else {
-      setPublicButton(false);
-    }
+    setPublicButton((prev) => !prev);
     await fetch(`${BASE_URL}/portfolios/make/public/${id}`, {
       method: "POST",
       credentials: "include",
@@ -72,13 +58,10 @@ const PortfolioInfo = () => {
   };
 
   const getSwingData = async () => {
-    const response = await fetch(
-      `${BASE_URL}/portfolios/swings/${id}/${historicalMode}`,
-      {
-        method: "GET",
-        credentials: "include",
-      }
-    );
+    const response = await fetch(`${BASE_URL}/portfolios/swings/${id}/${historicalMode}`, {
+      method: "GET",
+      credentials: "include",
+    });
     const data = await response.json();
     setSortedSwings(data);
   };
@@ -95,23 +78,15 @@ const PortfolioInfo = () => {
     const data = await response.json();
     setPortfolioData(data);
     setPublicButton(data.isPublic);
-    if (companyIds.length == 0 || !sameValues(data.companiesIds, companyIds)) {
+    if (companyIds.length === 0 || !sameValues(data.companiesIds, companyIds)) {
       setCompanyIds(data.companiesIds);
       await getCompaniesData(data.companiesIds, data.companiesStocks);
     }
   };
 
   const sameValues = (arr1, arr2) => {
-    for (let val of arr1) {
-      if (!arr2.includes(val)) {
-        return false;
-      }
-    }
-    for (let val of arr2) {
-      if (!arr1.includes(val)) {
-        return false;
-      }
-    }
+    for (let val of arr1) { if (!arr2.includes(val)) return false; }
+    for (let val of arr2) { if (!arr1.includes(val)) return false; }
     return true;
   };
 
@@ -125,14 +100,11 @@ const PortfolioInfo = () => {
     let i = 0;
     setCompaniesData((self) =>
       self.filter((value, ind) => {
-        if (value.id == companyId) {
-          i = ind;
-          return false;
-        }
+        if (value.id === companyId) { i = ind; return false; }
         return true;
       })
     );
-    setCompaniesStockData((self) => self.filter((value, ind) => ind !== i));
+    setCompaniesStockData((self) => self.filter((_, ind) => ind !== i));
   };
 
   const getCompaniesData = async (companiesIds, companiesStocks) => {
@@ -141,9 +113,7 @@ const PortfolioInfo = () => {
       const response = await fetch(`${BASE_URL}/company`, {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: companiesIds }),
       });
       if (response.ok) {
@@ -164,22 +134,21 @@ const PortfolioInfo = () => {
     let i = 0;
     let sum = 0;
     for (const company of newArray) {
-      const stockResponse = await fetch(
-        `${BASE_URL}/getters/stats/${company.ticker}`,
-        {
-          method: "GET",
-          credentials: "include",
-        }
-      );
-      const stockData = await stockResponse.json();
-      prices.push({
-        price: stockData.regularMarketPrice,
-        dayStart: stockData.regularMarketPreviousClose,
+      const stockResponse = await fetch(`${BASE_URL}/getters/stats/${company.ticker}`, {
+        method: "GET",
+        credentials: "include",
       });
+      const stockData = await stockResponse.json();
+      prices.push({ price: stockData.regularMarketPrice, dayStart: stockData.regularMarketPreviousClose });
       sum += stockData.regularMarketPrice * companiesStocks[i];
       i++;
     }
     setPortfolioValue(sum.toFixed(2));
+    let prevSum = 0;
+    for (let j = 0; j < prices.length; j++) {
+      prevSum += prices[j].dayStart * (companiesStocks[j] || 1);
+    }
+    setDailyChange(prevSum > 0 ? parseFloat(((sum - prevSum) / prevSum * 100).toFixed(2)) : 0);
     setCompaniesStockData(prices);
   };
 
@@ -187,9 +156,7 @@ const PortfolioInfo = () => {
     const getAllInfo = async () => {
       setCompaniesData(null);
       const response = await getUserPermissions();
-      if (response == false) {
-        return;
-      }
+      if (response === false) return;
       await getPortfolioData();
       setIsLoadTried(true);
     };
@@ -198,86 +165,112 @@ const PortfolioInfo = () => {
 
   if (viewerPermissions == null && isLoadTried) {
     return (
-      <h2 className="text-white self-center mt-15 ml-auto mr-auto">
-        Nothing for you here
+      <div className="flex flex-col items-center justify-center w-full h-screen gap-4">
+        <p className="text-gray-400 text-lg font-medium">Nothing for you here</p>
         <button
           onClick={() => navigate("/home")}
-          className="bg-black ml-4 hover:scale-110"
+          className="px-5 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25 text-sm font-semibold transition-all duration-200"
         >
           Go Home
         </button>
-      </h2>
+      </div>
     );
   }
 
   if (portfolioData == null) {
     return (
-      <img
-        className="w-50 h-50 mt-50 ml-auto mr-auto"
-        src="https://i.gifer.com/ZKZg.gif"
-      />
+      <div className="flex items-center justify-center w-full h-screen">
+        <div className="w-10 h-10 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      </div>
     );
   }
 
   return (
-    <>
-      <main className="w-full">
-        <div className="flex flex-col items-center">
-          <SearchBar />
-          <h3 className="self-center text-center text-6xl mt-30 mb-10 text-indigo-50 font-semibold drop-shadow-[0px_0px_39px_rgba(247,247,247,.3)] -z-50">
-            {portfolioData.name}
-          </h3>
-          <div className="flex flex-row justify-start w-full">
-            <div className="flex flex-col w-9/20 items-center">
-              <PortfolioCompanies
-                handleDelete={handleDelete}
-                companiesStockData={companiesStockData}
-                companiesData={companiesData}
-                isEditingMode={isEditingMode}
-                setIsEditingMode={setIsEditingMode}
-                permission={viewerPermissions}
-              />
-              {viewerPermissions === EDITOR_PERMS && (
-                <button className={publicButtonClass} onClick={handlePublic}>
-                  {isPublic === false ? (
-                    <span>Make Public</span>
-                  ) : (
-                    <span>Make Private</span>
-                  )}
-                </button>
+    <main className="w-full min-h-screen px-6 pb-12">
+      {/* Header */}
+      <div className="pt-8 pb-6 border-b border-white/8">
+        <div className="flex items-center gap-4 flex-wrap">
+          <h3 className="text-3xl font-bold text-white">{portfolioData.name}</h3>
+          {dailyChange !== null && (
+            <span className={cn("text-sm font-bold px-3 py-1 rounded-lg border", {
+              "bg-emerald-900/40 text-emerald-400 border-emerald-500/30": dailyChange >= 0,
+              "bg-red-900/40 text-red-400 border-red-500/30": dailyChange < 0,
+            })}>
+              {dailyChange >= 0 ? "▲ +" : "▼ "}{dailyChange}% today
+            </span>
+          )}
+          {viewerPermissions === EDITOR_PERMS && isPublic !== null && (
+            <button
+              onClick={handlePublic}
+              className={cn(
+                "text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200",
+                {
+                  "bg-red-900/30 text-red-400 border-red-500/20 hover:bg-red-900/50": isPublic === true,
+                  "bg-emerald-900/30 text-emerald-400 border-emerald-500/20 hover:bg-emerald-900/50": isPublic === false,
+                }
               )}
-            </div>
-            <SwingCompanies
-              companiesStockData={companiesStockData}
-              companiesData={companiesData}
-              setHistoricalMode={setHistoricalMode}
-              sortedSwings={sortedSwings}
-              historicalMode={historicalMode}
-            />
-          </div>
-          <div className="flex flex-row justify-center">
-            <PredictionTools
-              portfolioData={portfolioData}
-              companiesData={companiesData}
-              companiesStockData={companiesStockData}
-              portfolioValue={portfolioValue}
-            />
-            <Stocks
-              companiesData={companiesData}
-              companiesStockData={companiesStockData}
-              portfolioData={portfolioData}
-              portfolioValue={portfolioValue}
-              setPortfolioValue={setPortfolioValue}
-              perms={viewerPermissions}
-            />
-          </div>
-          <TextEditor id={id} viewerPermissions={viewerPermissions} />
+            >
+              {isPublic ? "Make Private" : "Make Public"}
+            </button>
+          )}
           {viewerPermissions === EDITOR_PERMS && (
-            <DeleteButton className="justify-center" isCard={false} />
+            <div className="ml-auto">
+              <DeleteButton isCard={false} />
+            </div>
           )}
         </div>
-      </main>
-    </>
+        {portfolioData.description && (
+          <p className="text-gray-400 text-sm mt-2">{portfolioData.description}</p>
+        )}
+      </div>
+
+      {/* Top row: Companies + Swings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-6">
+        <PortfolioCompanies
+          handleDelete={handleDelete}
+          companiesStockData={companiesStockData}
+          companiesData={companiesData}
+          isEditingMode={isEditingMode}
+          setIsEditingMode={setIsEditingMode}
+          permission={viewerPermissions}
+        />
+        <SwingCompanies
+          companiesStockData={companiesStockData}
+          companiesData={companiesData}
+          setHistoricalMode={setHistoricalMode}
+          sortedSwings={sortedSwings}
+          historicalMode={historicalMode}
+          portfolioData={portfolioData}
+        />
+      </div>
+
+      {/* Analysis Tool — full width row */}
+      <div className="mt-5">
+        <PredictionTools
+          portfolioData={portfolioData}
+          companiesData={companiesData}
+          companiesStockData={companiesStockData}
+          portfolioValue={portfolioValue}
+        />
+      </div>
+
+      {/* Stocks */}
+      <div className="mt-5">
+        <Stocks
+          companiesData={companiesData}
+          companiesStockData={companiesStockData}
+          portfolioData={portfolioData}
+          portfolioValue={portfolioValue}
+          setPortfolioValue={setPortfolioValue}
+          perms={viewerPermissions}
+        />
+      </div>
+
+      {/* Text Editor */}
+      <div className="mt-5">
+        <TextEditor id={id} viewerPermissions={viewerPermissions} />
+      </div>
+    </main>
   );
 };
 

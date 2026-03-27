@@ -94,6 +94,7 @@ model Portfolio {
     isPublic    Boolean @default(false)
     companiesStocks   Int[] @default([])
     model       Boolean @default(false)
+    isTraining  Boolean @default(false)
 }
 
 model Sector { 

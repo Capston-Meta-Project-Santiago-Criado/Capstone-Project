@@ -5,6 +5,7 @@ const express = require("express");
 
 const { default: yahooFinance } = require("yahoo-finance2");
 const { formatDate, getBeforeDate } = require("../lib/utils");
+const { fetchHistorical } = require("../lib/yahooCache");
 
 const app = express();
 app.use(express.json());
@@ -23,62 +24,47 @@ const b2 = new B2({
 
 //constants
 const bucketId = process.env.bucket_id; // buckedId for saving models
-const THREE_MONTH = "3Months"; // string constant for getBeforeDate
 const NUM_FEATURES = 4; // number of features in the model, currently (high, volume, open, low)
 
 const cleanRawData = (historicalData, tickerArr) => {
-  let cleanData = []; // earliest dates are earliest in the index!
-  let dates = [];
+  // historicalData[tick] is a plain array from yf.historical
+  const minLen = Math.min(...tickerArr.map((t) => historicalData[t]?.length ?? 0));
+  if (minLen < 2) return null;
+
+  let cleanData = [];
   let labels = [];
-  let highArr = [];
-  let volArr = [];
-  let openArr = [];
-  let lowArr = [];
-  let adjArr = [];
-  for (let i = 0; i < historicalData[tickerArr[0]].quotes.length; i++) {
+  let highArr = [], volArr = [], openArr = [], lowArr = [];
+
+  for (let i = 0; i < minLen; i++) {
     let concatData = new Array(NUM_FEATURES).fill(0);
     let labelVal = 0;
-    dates[i] = historicalData[tickerArr[0]].quotes[i].date; // dates should be the same everywhere
     for (let tick of tickerArr) {
-      if (historicalData[tick].quotes[i] == null) {
-        break;
-      }
-      // double for loops generally bad practice, but tickerArr is constant size (I doubt a portfolio will exceed 100 companies!)
-      concatData[0] += historicalData[tick].quotes[i].high;
-      concatData[1] += historicalData[tick].quotes[i].volume;
-      concatData[2] += historicalData[tick].quotes[i].open;
-      concatData[3] += historicalData[tick].quotes[i].low;
-      labelVal += historicalData[tick].quotes[i].close;
+      const q = historicalData[tick][i];
+      if (!q) continue;
+      concatData[0] += q.high ?? 0;
+      concatData[1] += q.volume ?? 0;
+      concatData[2] += q.open ?? 0;
+      concatData[3] += q.low ?? 0;
+      labelVal += q.close ?? 0;
     }
     cleanData.push(concatData);
     highArr.push(concatData[0]);
     volArr.push(concatData[1]);
     openArr.push(concatData[2]);
     lowArr.push(concatData[3]);
-    adjArr.push(concatData[4]);
     labels.push(labelVal);
   }
   normalize(
     cleanData,
-    [
-      Math.min(...highArr),
-      Math.min(...volArr),
-      Math.min(...openArr),
-      Math.min(...lowArr),
-    ],
-    [
-      Math.max(...highArr),
-      Math.max(...volArr),
-      Math.max(...openArr),
-      Math.max(...lowArr),
-    ],
+    [Math.min(...highArr), Math.min(...volArr), Math.min(...openArr), Math.min(...lowArr)],
+    [Math.max(...highArr), Math.max(...volArr), Math.max(...openArr), Math.max(...lowArr)],
     true
   );
   let maxLabel = [Math.max(...labels)];
   let lastPrice = labels[labels.length - 1];
   let minLabel = [Math.min(...labels)];
   normalize(labels, minLabel, maxLabel, false);
-  return { cleanData, labels, lastPrice: lastPrice, minLabel, maxLabel };
+  return { cleanData, labels, lastPrice, minLabel, maxLabel };
 };
 
 const saveModel = async (model, portfolioId, portfolio) => {
@@ -157,186 +143,177 @@ const getCachedIfExists = async (portfolioId) => {
   }
 };
 
-/* create and run model! */
-router.post("/:id", async (req, res) => {
-  const FUTURE_DAYS = 30; // how many days we predict **these can be turned into params and specified by users later!"
-  const WINDOW = 40; // how far in the past we look in total
-  const portfolioId = parseInt(req.params.id);
-  const currentCost = parseInt(req.body.currentPrice);
-  const isNewModel = JSON.parse(req.body.newModel);
-  const userId = req.session.userId;
-  const portfolio = await prisma.portfolio.findUnique({
-    where: {
-      id: portfolioId,
-    },
-  });
-  const companyArrays = await prisma.company.findMany({
-    where: {
-      id: {
-        in: portfolio.companiesIds,
-      },
-    },
-  });
-  const tickerArr = companyArrays.map((val) => val.ticker);
+const FUTURE_DAYS = 30;
+const WINDOW = 40;
+
+// Fetches historical data for all tickers and cleans it for the model
+const prepareModelData = async (tickerArr) => {
   const todayString = new Date();
-  const earlierString = getBeforeDate(THREE_MONTH);
-  const historicalData = {};
-  for (let tick of tickerArr) {
-    const prices = await yahooFinance.chart(tick, {
-      period1: formatDate(earlierString),
-      period2: formatDate(todayString),
-      interval: "1h",
-    });
-    historicalData[tick] = prices;
-  }
-  // clean data for model! we will add each of the values together and then get out
-  // we will start by adding together each value and then later normalizing
-  let { cleanData, labels, lastPrice, minLabel, maxLabel } = cleanRawData(
-    historicalData,
-    tickerArr
+  const earlierString = getBeforeDate(""); // 1 year — need ≥70 trading days for WINDOW+FUTURE_DAYS
+  const results = await Promise.all(
+    tickerArr.map((tick) => fetchHistorical(tick, earlierString, todayString))
   );
-  let lastDays = cleanData.slice(-WINDOW);
-  let model = await getCachedIfExists(portfolioId);
-  if (model == null || isNewModel == true) {
-    // data is now cleaned, so we create vectors for our model\
-    const X = []; // shape is ( #datapoints X WINDOW x NUM_FEATURES) - 80 past datapoints (can add more if needed), we have WINDOW inputs (past cost) and NUM_FEATURES features each (high, volume, open, low, adjclose)
-    const Y = []; // this is size (1 x FUTURE_DAYS)
+  const historicalData = Object.fromEntries(tickerArr.map((tick, i) => [tick, results[i] ?? []]));
+  const cleaned = cleanRawData(historicalData, tickerArr);
+  if (!cleaned) return null;
+  // Find the last traded date across all tickers so predictions start from there
+  let lastDate = null;
+  for (const result of results) {
+    if (result?.length) {
+      const d = result[result.length - 1].date;
+      if (!lastDate || d > lastDate) lastDate = d;
+    }
+  }
+  return { ...cleaned, lastDate };
+};
+
+// Runs predictions on a loaded model and returns { base, bull, bear }
+const runPredictions = async (model, cleaned, tickerArr, currentCost) => {
+  let { cleanData, minLabel, maxLabel, lastDate } = cleaned;
+  const lastDays = cleanData.slice(-WINDOW);
+  const input = tf.tensor3d([lastDays], [1, WINDOW, NUM_FEATURES]);
+  const prediction = model.predict(input);
+  const predictionArray = (await prediction.array())[0];
+  tf.dispose([input, prediction]);
+
+  // Start predictions from the last traded date, not today — avoids gaps on weekends/holidays
+  let currentDate = lastDate ? new Date(lastDate) : new Date();
+  const offset = currentCost - parseFloat(unNormalize(predictionArray[0], minLabel, maxLabel));
+  const valuePredict = predictionArray.map((value) => {
+    const price = unNormalize(value, minLabel, maxLabel);
+    currentDate.setDate(currentDate.getDate() + 1);
+    return { date: formatDate(new Date(currentDate)), price: parseFloat(price) + offset };
+  });
+
+  const finalValues = await additionalModelFactors(tickerArr, valuePredict);
+
+  return { base: finalValues };
+};
+
+const TOTAL_EPOCHS = 10;
+
+// Background training — called after response is already sent
+const trainInBackground = async (portfolioId, userId, portfolio, tickerArr, io) => {
+  await prisma.portfolio.update({ where: { id: portfolioId }, data: { isTraining: true } });
+  if (io) io.emit("training:start", { portfolioId });
+
+  try {
+    const cleaned = await prepareModelData(tickerArr);
+    if (!cleaned) throw new Error("Not enough historical data to train");
+    const { cleanData, labels } = cleaned;
+
+    const X = [];
+    const Y = [];
     for (let i = 0; i + WINDOW + FUTURE_DAYS <= cleanData.length; i++) {
       X.push(cleanData.slice(i, i + WINDOW));
       Y.push(labels.slice(i + WINDOW, i + WINDOW + FUTURE_DAYS));
     }
-    const X_values = tf.tensor3d(X, [X.length, WINDOW, 4]);
+    const X_values = tf.tensor3d(X, [X.length, WINDOW, NUM_FEATURES]);
     const Y_values = tf.tensor2d(Y, [Y.length, FUTURE_DAYS]);
-    // model inspired by https://codelabs.developers.google.com/codelabs/tfjs-training-regression/index.html#8,
-    // but heavily modified with own data and using lstm instead of only dense
-    model = tf.sequential();
-    model.add(
-      tf.layers.lstm({
-        units: 30,
-        inputShape: [WINDOW, NUM_FEATURES],
-        returnSequences: true,
-      })
-    );
-    model.add(
-      tf.layers.lstm({
-        units: 16,
-        returnSequences: false,
-      })
-    );
+
+    const model = tf.sequential();
+    model.add(tf.layers.lstm({ units: 30, inputShape: [WINDOW, NUM_FEATURES], returnSequences: true }));
+    model.add(tf.layers.lstm({ units: 16, returnSequences: false }));
     model.add(tf.layers.dense({ units: FUTURE_DAYS, activation: "tanh" }));
-    model.compile({
-      optimizer: tf.train.adam(),
-      loss: tf.losses.meanSquaredError,
-      metrics: ["mse"], // val w mse validation / loss
-    });
+    model.compile({ optimizer: tf.train.adam(), loss: "meanSquaredError" });
+
     await model.fit(X_values, Y_values, {
-      epochs: 10,
+      epochs: TOTAL_EPOCHS,
       batchSize: 32,
       validationSplit: 0.2,
-      verbose: 1,
-    });
-    await prisma.portfolio.update({
-      where: {
-        id: portfolioId,
-      },
-      data: {
-        model: true,
-      },
-    });
-
-    const newUser = await prisma.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        unreadNotifications: {
-          increment: 1,
+      verbose: 0,
+      callbacks: {
+        onEpochEnd: (epoch, logs) => {
+          const pct = Math.round(((epoch + 1) / TOTAL_EPOCHS) * 100);
+          console.log(`Portfolio ${portfolioId} — Epoch ${epoch + 1}/${TOTAL_EPOCHS}  loss=${logs.loss?.toFixed(4)}  pct=${pct}%`);
+          if (io) io.emit("training:progress", { portfolioId, epoch: epoch + 1, totalEpochs: TOTAL_EPOCHS, pct });
         },
       },
     });
-    await saveModel(model, portfolioId, portfolio);
-    const io = req.app.get("io");
-
-    io.emit("notification", newUser.unreadNotifications);
     tf.dispose([X_values, Y_values]);
+
+    await prisma.portfolio.update({ where: { id: portfolioId }, data: { model: true, isTraining: false } });
+    const newUser = await prisma.user.update({
+      where: { id: userId },
+      data: { unreadNotifications: { increment: 1 } },
+    });
+    await saveModel(model, portfolioId, portfolio);
+    if (io) {
+      io.emit("training:done", { portfolioId });
+      io.emit("notification", newUser.unreadNotifications);
+    }
+  } catch (err) {
+    console.error("Training failed for portfolio", portfolioId, ":", err?.message ?? err);
+    await prisma.portfolio.update({ where: { id: portfolioId }, data: { isTraining: false } }).catch(() => {});
+    if (io) io.emit("training:error", { portfolioId, message: err?.message ?? "Training failed" });
   }
-  lastDays = cleanData.slice(-WINDOW);
-  const input = tf.tensor3d([lastDays], [1, WINDOW, NUM_FEATURES]);
-  const prediction = model.predict(input);
-  const predictionArray = (await prediction.array())[0];
-  let currentDate = new Date();
-  let offset =
-    currentCost -
-    parseFloat(unNormalize(predictionArray[0], minLabel, maxLabel));
-  const valuePredict = predictionArray.map((value) => {
-    lastPrice = unNormalize(value, minLabel, maxLabel);
-    currentDate.setDate(currentDate.getDate() + 1);
-    return {
-      date: formatDate(currentDate),
-      price: parseFloat(lastPrice) + offset,
-    };
-  });
-  tf.dispose([input, prediction]);
-  const finalValues = await additionalModelFactors(
-    tickerArr,
-    valuePredict,
-    companyArrays
-  );
-  // we have base predictions, now we add in other factors, like P/E, earnings expectations, etc.
-  res.json(finalValues);
+};
+
+/* create and run model! */
+router.post("/:id", async (req, res) => {
+  try {
+    const portfolioId = parseInt(req.params.id);
+    const currentCost = parseInt(req.body.currentPrice);
+    const isNewModel = JSON.parse(req.body.newModel);
+    const userId = req.session.userId;
+
+    const portfolio = await prisma.portfolio.findUnique({ where: { id: portfolioId } });
+    const companyArrays = await prisma.company.findMany({ where: { id: { in: portfolio.companiesIds } } });
+    const tickerArr = companyArrays.map((val) => val.ticker);
+
+    if (isNewModel) {
+      // Respond immediately — training runs in background
+      res.status(202).json({ training: true });
+      trainInBackground(portfolioId, userId, portfolio, tickerArr, req.app.get("io"));
+      return;
+    }
+
+    // Load cached model and run predictions synchronously
+    const model = await getCachedIfExists(portfolioId);
+    if (!model) {
+      return res.status(404).json({ error: "No trained model found. Train a new model first." });
+    }
+
+    const cleaned = await prepareModelData(tickerArr);
+    if (!cleaned) {
+      return res.status(500).json({ error: "Not enough historical data. Try again in a moment." });
+    }
+
+    const result = await runPredictions(model, cleaned, tickerArr, currentCost);
+    res.json(result);
+  } catch (err) {
+    console.error("Model route error:", err?.message ?? err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: err?.message ?? "Internal Server Error" });
+    }
+  }
 });
 
 // now we look at P/E, earnings expectations, etc:
 
 // to do this, we look at average analyst rating and give higher weight to those
-const additionalModelFactors = async (tickers, valuePredict, companyArrays) => {
-  const data = await yahooFinance.quote(tickers, { validateResult: false });
-  let getEarnings = companyArrays.map((value) => value.UpcomingEarnings); // when are the next earnings calls?
-  getEarnings = getEarnings.filter((value) => value.length != 0);
-  let analystsum = 0;
-  for (let companydata of data) {
-    if (companydata.averageAnalystRating == null) {
-      analystsum += 2.5;
-    } else {
-      const newFloat = parseFloat(
-        companydata.averageAnalystRating.split(" ")[0]
-      );
-      analystsum += newFloat;
-    }
-  }
-  const averageAnalystRating = analystsum / parseFloat(data.length); // analyst rating goes from 1-5. Add to predictions based on this!, up to 10% swing at the end.
-  // we choose 1.003 as constant for 1.0 as a 10% (30 day timeframe) total increase for having a perfect analyst rating, or a rating of 1 (ie -- 1.003^30 = 1.09 )
-  // likewise we choose 0.997 as a constant for 5.0, for a total 10% DECREASE (30 day timeframe )for having a horrible analyst rating of 5. Everything else is evenly between!
-
-  // get insider trading transactions as well!
-  const dateNow = formatDate(new Date());
-  let prevDate = new Date(dateNow);
-  prevDate.setFullYear(prevDate.getFullYear() - 1);
-  let factorChange = determineFactor(averageAnalystRating);
-  let sentimentCost = 0;
-  for (let tick of tickers) {
-    finnhubClient.insiderSentiment(
-      tick,
-      formatDate(prevDate),
-      dateNow,
-      async (error, data) => {
-        if (error) {
-          console.error(error);
-          return;
-        }
-        if (data.data[data.data.length - 1]) {
-          sentimentCost += data.data[data.data.length - 1].mspr;
-        }
+const additionalModelFactors = async (tickers, valuePredict) => {
+  try {
+    const rawData = await yahooFinance.quote(tickers, {}, { validateResult: false });
+    const data = Array.isArray(rawData) ? rawData : [rawData];
+    let analystsum = 0;
+    for (const companydata of data) {
+      if (!companydata || companydata.averageAnalystRating == null) {
+        analystsum += 2.5;
+      } else {
+        const newFloat = parseFloat(companydata.averageAnalystRating.split(" ")[0]);
+        analystsum += isNaN(newFloat) ? 2.5 : newFloat;
       }
-    );
+    }
+    const averageAnalystRating = analystsum / data.length;
+    const factorChange = determineFactor(averageAnalystRating);
+    return valuePredict.map((value, ind) => ({
+      date: value.date,
+      price: value.price * Math.pow(factorChange, ind),
+    }));
+  } catch {
+    return valuePredict;
   }
-  factorChange += Math.sign(sentimentCost) * 0.0005;
-  const newPredict = valuePredict.map((value, ind) => {
-    const factor = Math.pow(factorChange, ind);
-    return { date: value.date, price: value.price * factor };
-  });
-
-  return newPredict;
 };
 
 const determineFactor = (averageAnalystRating) => {
@@ -365,7 +342,9 @@ const normalize = (arrToNormalize, minvalues, maxvalues, double) => {
 };
 
 const unNormalize = (value, min, max) => {
-  return value * (max - min) + min;
+  const minVal = Array.isArray(min) ? min[0] : min;
+  const maxVal = Array.isArray(max) ? max[0] : max;
+  return value * (maxVal - minVal) + minVal;
 };
 
 /* Stretch Feature / TC iteration, Risk Analysis. 

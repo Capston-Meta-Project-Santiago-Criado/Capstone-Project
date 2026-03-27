@@ -1,7 +1,9 @@
 // mostly shadcn library, boilerplate code from https://ui.shadcn.com/docs/components/sidebar, own formatting
 
-import { Home, Inbox, Settings, BookText } from "lucide-react"; // lucide react library components
+import { Home, Inbox, Settings, BookText } from "lucide-react";
 import { UserInfo } from "../context/UserContext";
+import { useNavigate, useLocation } from "react-router-dom";
+
 const INBOX_TITLE = "Inbox";
 const PORTFOLIO_TITLE = "My Portfolios";
 
@@ -10,84 +12,56 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "./ui/sidebar"; // sidebar from shadcn
+} from "./ui/sidebar";
 
-// Menu items.
 const items = [
-  {
-    title: "Home",
-    url: "/home",
-    icon: Home,
-  },
-  {
-    title: INBOX_TITLE,
-    url: "/inbox",
-    icon: Inbox,
-  },
-  {
-    title: PORTFOLIO_TITLE,
-    url: "/portfolios",
-    icon: BookText,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
+  { title: "Home", url: "/home", icon: Home },
+  { title: INBOX_TITLE, url: "/inbox", icon: Inbox },
+  { title: PORTFOLIO_TITLE, url: "/portfolios", icon: BookText },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 const AppSidebar = ({ numberOfNotifications }) => {
   const { isGuest } = UserInfo();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   return (
-    <Sidebar className="bg-purple text-white p-3">
+    <Sidebar className="border-r border-white/6 pt-14">
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-4xl ml-auto mr-auto">
-            Alpha-Edge
-          </SidebarGroupLabel>
-          <SidebarGroupContent className="mt-5">
-            <SidebarMenu>
+        <SidebarGroup className="px-3 pt-4">
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1">
               {items.map((item) => {
                 if (
-                  (item.title == INBOX_TITLE ||
-                    item.title == PORTFOLIO_TITLE) &&
-                  isGuest == true
-                ) {
-                  return;
-                }
+                  (item.title === INBOX_TITLE || item.title === PORTFOLIO_TITLE) &&
+                  isGuest === true
+                ) return null;
+
+                const isActive = location.pathname.startsWith(item.url);
+
                 return (
-                  <SidebarMenuItem
-                    key={item.title}
-                    className="m-1 bg-dark hover:brightness-75 rounded-b-md p-1"
-                  >
+                  <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      asChild
-                      className="[&>svg]:size-7 [&>svg]:ml-2"
+                      onClick={() => navigate(item.url)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                        isActive
+                          ? "!bg-white/10 !text-white border border-white/20"
+                          : "!text-gray-400 hover:!text-white hover:!bg-white/6"
+                      }`}
                     >
-                      <a href={item.url} className="flex items-center">
-                        <item.icon className="text-white" />
-                        {(item.title != INBOX_TITLE ||
-                          numberOfNotifications === 0) && (
-                          <span className="text-white text-[15px]">
-                            {item.title}
-                          </span>
-                        )}
-                        {item.title == INBOX_TITLE &&
-                          numberOfNotifications !== 0 && (
-                            <div className="flex flex-row justify-center items-center">
-                              <span className="text-white text-[15px] mr-3">
-                                {item.title}
-                              </span>
-                              <div className="bg-amber-200 rounded-4xl p-1 text-black">
-                                {numberOfNotifications}
-                              </div>
-                            </div>
-                          )}
-                      </a>
+                      <item.icon
+                        className={`w-4 h-4 flex-shrink-0 ${isActive ? "text-white" : "text-gray-400"}`}
+                      />
+                      <span>{item.title}</span>
+                      {item.title === INBOX_TITLE && numberOfNotifications > 0 && (
+                        <span className="ml-auto text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">
+                          {numberOfNotifications}
+                        </span>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );

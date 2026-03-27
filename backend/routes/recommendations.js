@@ -10,7 +10,7 @@ const { updateAllCompanies } = require("../lib/utils");
 
 // constants
 const PORTFOLIO_PREFORMANCE = 0.6; // how much price affects portfolios, matters much more than companies
-const PUBLIC_PORTFOLIOS_NUMBER = 6; // number of public portfolios to show
+const PUBLIC_PORTFOLIOS_NUMBER = 9; // number of public portfolios to show
 const LOWER_THAN_CHANGE = 0.05; // point at which weights no longer lower
 const INIT_IND_REWARD = 0.2; // initial reward given to industry when they are clicked on by user for first time
 const INIT_SECT_REWARD = 0.1; // same as above but for sector
@@ -38,7 +38,7 @@ router.get("/curated-portfolios/public", async (req, res) => {
         orderBy: {
           id: "asc",
         },
-        take: NUMBER_RECOMMENDED,
+        take: PUBLIC_PORTFOLIOS_NUMBER,
       })
     );
     return;

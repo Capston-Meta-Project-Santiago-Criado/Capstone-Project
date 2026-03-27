@@ -1,4 +1,3 @@
-import Searchbar from "./components/SearchBar";
 import { BASE_URL } from "./lib/utils";
 import { useNavigate } from "react-router-dom";
 import { UserInfo } from "./context/UserContext";
@@ -41,7 +40,6 @@ const Settings = () => {
   return (
     <main className="w-full">
       <div className="flex flex-col items-center">
-        <Searchbar />
         <h3 className="self-center text-center text-6xl mt-30 mb-10 text-indigo-50 font-semibold -z-10">
           Settings
         </h3>
