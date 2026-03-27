@@ -123,10 +123,10 @@ router.get("/basic/:id", async (req, res, next) => {
     },
   });
   if (portfolio == null) {
-    next(new DoesNotExist(DOES_NOT_EXIST));
+    return next(new DoesNotExist(DOES_NOT_EXIST));
   }
   if (userId !== portfolio.userId && portfolio.isPublic !== true) {
-    res
+    return res
       .status(401)
       .json({ message: "you do not have permission to access this portfolio" });
   }
@@ -146,15 +146,14 @@ router.put("/add/:id/:companyId", async (req, res, next) => {
   });
 
   if (portfolio == null) {
-    next(new BadParams("not a real portfolio id"));
+    return next(new BadParams("not a real portfolio id"));
   }
 
   if (portfolio.companiesIds.includes(companyId)) {
-    next(new BadParams("id is already in portfolio"));
-    return;
+    return next(new BadParams("id is already in portfolio"));
   }
   if (userId !== portfolio.userId) {
-    res
+    return res
       .status(401)
       .json({ message: "you do not have permission to change this portfolio" });
   }

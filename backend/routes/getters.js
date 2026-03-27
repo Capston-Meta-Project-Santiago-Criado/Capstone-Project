@@ -19,6 +19,11 @@ const fetchPolygonSnapshots = async (tickers) => {
   const joined = tickers.join(",");
   const url = `https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${joined}&apiKey=${POLYGON_KEY}`;
   const resp = await fetch(url);
+  if (!resp.ok) {
+    const text = await resp.text();
+    console.warn(`Polygon snapshots: HTTP ${resp.status} — ${text.slice(0, 120)}`);
+    return {};
+  }
   const json = await resp.json();
   if (!Array.isArray(json.tickers)) return {};
   return Object.fromEntries(

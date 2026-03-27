@@ -23,6 +23,11 @@ const fetchFullSeries = (ticker) => {
       const to = toDateStr(new Date());
       const url = `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=2000&apiKey=${apiKey}`;
       const resp = await fetch(url);
+      if (!resp.ok) {
+        const text = await resp.text();
+        console.warn(`Polygon: HTTP ${resp.status} for ${ticker} — ${text.slice(0, 120)}`);
+        return null;
+      }
       const json = await resp.json();
 
       if (json.status === "ERROR" || !Array.isArray(json.results)) {
