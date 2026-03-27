@@ -8,7 +8,6 @@ const router = express.Router({ mergeParams: true });
 require("dotenv").config();
 
 const { isMarketOpen } = require("../lib/utils");
-const fetch = require("node-fetch");
 
 const POLYGON_KEY = process.env.POLYGON_KEY;
 const QUOTE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes during market hours

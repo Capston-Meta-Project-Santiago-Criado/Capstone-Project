@@ -96,7 +96,11 @@ app.use((req, res, next) => {
     "/performance",
     "/populators",
   ];
-  if (publicRoutes.some((route) => path.includes(route))) {
+  const isPublic = publicRoutes.some((route) => path.includes(route));
+  if (!isPublic && userId == null) {
+    console.warn(`[AUTH] 401 on path="${path}" method=${req.method}`);
+  }
+  if (isPublic) {
     next();
     return;
   }

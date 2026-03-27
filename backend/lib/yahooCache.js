@@ -1,5 +1,4 @@
 const { isMarketOpen } = require("./utils");
-const fetch = require("node-fetch");
 
 const seriesCache = new Map();  // ticker -> { fullSeries, fetchedAt }
 const inFlight = new Map();     // ticker -> Promise (deduplicates concurrent fetches)
