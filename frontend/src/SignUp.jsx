@@ -143,6 +143,7 @@ const SignUp = () => {
             value={formData.password}
             handleFormChange={handleFormChange}
             isPassword={true}
+            isNewPassword={true}
           />
           <button
             type="submit"

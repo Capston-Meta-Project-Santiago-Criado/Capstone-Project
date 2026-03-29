@@ -16,6 +16,13 @@ const app = express();
 
 app.use(express.json());
 
+app.use((_req, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
 if (isProd) {
   // behind Heroku, Nginx, Cloudflare, etc.
   app.set("trust proxy", 1);
