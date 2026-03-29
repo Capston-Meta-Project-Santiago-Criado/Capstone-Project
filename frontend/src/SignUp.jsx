@@ -109,7 +109,7 @@ const SignUp = () => {
         </div>
       </header>
       {!signUpPressed && (
-        <div className="flex flex-col bg-indigo-50 p-8 rounded-md shadow-xl/40 w-150 m-auto">
+        <form method="post" className="flex flex-col bg-indigo-50 p-8 rounded-md shadow-xl/40 w-150 m-auto">
           <h3 className="font-bold text-3xl p-1 text-center">Sign Up</h3>
           <p className="font-bold text-sm p-0 text-center">
             Please sign up to continue{" "}
@@ -165,7 +165,7 @@ const SignUp = () => {
           >
             Back to login
           </button>
-        </div>
+        </form>
       )}
       {signUpPressed && (
         <SignUpPreferences createUser={createUser} changeMode={false} />

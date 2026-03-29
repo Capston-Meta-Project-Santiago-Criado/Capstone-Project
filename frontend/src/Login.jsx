@@ -60,7 +60,7 @@ const Login = () => {
           </h1>
         </div>
       </header>
-      <form className="flex flex-col bg-indigo-50 p-8 rounded-md shadow-xl/40 shadow-slate-900 w-150 m-auto">
+      <form method="post" className="flex flex-col bg-indigo-50 p-8 rounded-md shadow-xl/40 shadow-slate-900 w-150 m-auto">
         <h3 className="font-bold text-3xl p-3 text-center"> Welcome Back</h3>
         <InputBox
           placeholder="Username"

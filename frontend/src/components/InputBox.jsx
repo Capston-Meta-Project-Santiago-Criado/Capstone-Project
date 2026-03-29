@@ -28,13 +28,14 @@ const InputBox = ({
   return (
     <>
       <label className="font-semibold ml-2">{label}</label>
-      <textarea
+      <input
+        type={name === "email" ? "email" : "text"}
         className={inputClass}
         name={name}
         placeholder={placeholder}
         onChange={handleFormChange}
         value={value}
-      ></textarea>
+      />
     </>
   );
 };
