@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useRef, useState, useEffect } from "react";
 import { BASE_URL } from "../lib/utils";
 
 const UserContext = createContext();
+
+const NOTIF_TTL = 30_000; // 30 seconds
 
 const UserContextProvider = ({ children }) => {
   const [fullName, setFullName] = useState("");
@@ -10,6 +12,8 @@ const UserContextProvider = ({ children }) => {
   const [isGuest, setIsGuest] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [numberOfNotifications, setNumberOfNotifications] = useState(0);
+  const [notifications, setNotifications] = useState(null); // null = never fetched
+  const notifsFetchedAt = useRef(0);
 
   useEffect(() => {
     const checkLogin = async () => {
@@ -28,6 +32,22 @@ const UserContextProvider = ({ children }) => {
     };
     checkLogin();
   }, []);
+
+  const fetchNotifications = async (force = false) => {
+    if (!force && Date.now() - notifsFetchedAt.current < NOTIF_TTL) return;
+    try {
+      const r = await fetch(`${BASE_URL}/notifications`, { credentials: "include" });
+      if (!r.ok) return;
+      const data = await r.json();
+      setNotifications(data);
+      notifsFetchedAt.current = Date.now();
+    } catch {}
+  };
+
+  const invalidateNotifications = () => {
+    notifsFetchedAt.current = 0;
+  };
+
   return (
     <UserContext.Provider
       value={{
@@ -42,6 +62,9 @@ const UserContextProvider = ({ children }) => {
         setNumberOfNotifications,
         isGuest,
         setIsGuest,
+        notifications,
+        fetchNotifications,
+        invalidateNotifications,
       }}
     >
       {children}

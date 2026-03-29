@@ -19,7 +19,6 @@ const Stocks = ({
 
   useEffect(() => {
     if (!companiesData || !portfolioData) return;
-    // companiesStocks is ordered by companiesIds; reorder to match companiesData order
     const s = companiesData.map((company) => {
       const idx = portfolioData.companiesIds?.indexOf(company.id) ?? -1;
       return idx >= 0 ? (portfolioData.companiesStocks[idx] ?? 1) : 1;
@@ -92,9 +91,10 @@ const Stocks = ({
       </div>
 
       {/* Table header */}
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 px-4 py-2 border-b border-white/6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+      <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 px-4 py-2 border-b border-white/6 text-xs font-semibold text-gray-500 uppercase tracking-wider">
         <span>Company</span>
-        <span className="text-right">Price</span>
+        <span className="text-right w-20">Price</span>
+        <span className="text-right w-20">Change</span>
         <span className="text-center w-28">Shares</span>
         <span className="text-right w-24">Value</span>
       </div>
@@ -118,7 +118,7 @@ const Stocks = ({
           return (
             <div
               key={company.id}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 items-center px-4 py-3 hover:bg-white/3 transition-colors"
+              className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-x-4 items-center px-4 py-3 hover:bg-white/3 transition-colors"
             >
               {/* Company name + ticker */}
               <div className="min-w-0">
@@ -126,12 +126,22 @@ const Stocks = ({
                 <p className="text-xs text-gray-500">{company.ticker}</p>
               </div>
 
-              {/* Price + daily change */}
-              <div className="text-right">
+              {/* Price */}
+              <div className="text-right w-20">
                 <p className="text-sm font-mono text-white">${price.toFixed(2)}</p>
-                <p className={`text-xs font-semibold ${isUp ? "text-emerald-400" : "text-red-400"}`}>
+              </div>
+
+              {/* Change % — dedicated column */}
+              <div className="text-right w-20">
+                <span
+                  className={`inline-block text-xs font-bold px-2 py-0.5 rounded-md ${
+                    isUp
+                      ? "bg-emerald-900/40 text-emerald-400"
+                      : "bg-red-900/40 text-red-400"
+                  }`}
+                >
                   {isUp ? "+" : ""}{pct.toFixed(2)}%
-                </p>
+                </span>
               </div>
 
               {/* Shares stepper */}

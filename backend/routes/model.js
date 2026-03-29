@@ -239,13 +239,13 @@ const trainInBackground = async (portfolioId, userId, portfolio, tickerArr, io) 
     });
     await saveModel(model, portfolioId, portfolio);
     if (io) {
-      io.emit("training:done", { portfolioId });
-      io.emit("notification", newUser.unreadNotifications);
+      io.to(`user:${userId}`).emit("training:done", { portfolioId });
+      io.to(`user:${userId}`).emit("notification", newUser.unreadNotifications);
     }
   } catch (err) {
     console.error("Training failed for portfolio", portfolioId, ":", err?.message ?? err);
     await prisma.portfolio.update({ where: { id: portfolioId }, data: { isTraining: false } }).catch(() => {});
-    if (io) io.emit("training:error", { portfolioId, message: err?.message ?? "Training failed" });
+    if (io) io.to(`user:${userId}`).emit("training:error", { portfolioId, message: err?.message ?? "Training failed" });
   }
 };
 

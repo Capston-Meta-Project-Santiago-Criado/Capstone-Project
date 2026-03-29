@@ -36,7 +36,7 @@ const sessionMiddleware = session({
     secure: isProd,
     sameSite: isProd ? "none" : "lax",
   },
-  secret: "a santa at nasa",
+  secret: process.env.SESSION_SECRET,
   resave: true,
   saveUninitialized: false,
   store: new PrismaSessionStore(new PrismaClient(), {
@@ -64,6 +64,11 @@ io.use((socket, next) => {
 
 io.on("connection", (socket) => {
   socket.emit("connected", "connected");
+  // Join a user-specific room so we can target notifications precisely
+  const userId = socket.request.session?.userId;
+  if (userId) {
+    socket.join(`user:${userId}`);
+  }
 });
 
 app.set("io", io);

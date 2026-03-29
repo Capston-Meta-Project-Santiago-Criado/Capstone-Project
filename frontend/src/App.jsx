@@ -19,7 +19,7 @@ import { useEffect } from "react";
 import { BASE_URL } from "./lib/utils";
 
 const LoggedInPage = ({ isLoggedIn, children, isGuest }) => {
-  const { fullName, numberOfNotifications, setNumberOfNotifications } =
+  const { fullName, numberOfNotifications, setNumberOfNotifications, invalidateNotifications } =
     UserInfo();
 
   useEffect(() => {
@@ -28,20 +28,23 @@ const LoggedInPage = ({ isLoggedIn, children, isGuest }) => {
         method: "GET",
         credentials: "include",
       });
-      const notifications = await response.json();
-      setNumberOfNotifications(notifications);
+      const count = await response.json();
+      setNumberOfNotifications(count);
     };
 
-    const setNotification = (number) => {
+    const onNotification = (number) => {
       setNumberOfNotifications(number);
+      // Force-refresh the cached notification list so inbox updates immediately
+      invalidateNotifications();
     };
-    socket.on("notification", setNotification);
+
+    socket.on("notification", onNotification);
     if (isLoggedIn) {
       getStoredNotifications();
     }
 
     return () => {
-      socket.off("notification", setNotification);
+      socket.off("notification", onNotification);
     };
   }, []);
   const navigate = useNavigate();

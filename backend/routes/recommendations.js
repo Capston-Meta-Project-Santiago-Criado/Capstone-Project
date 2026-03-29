@@ -21,76 +21,68 @@ const HISTORY_FACTOR = 0.5; // initial implication of history. goes .5, .25, .12
 const NUMBER_RECOMMENDED = 8; // # of recommended companies
 const DIVIDENDS_BASE = 1.05; // base number to be multiplied bt dividends in the last 2 years
 
-/* get all public portfolios, sort by top X_number - get best recommended by performance 
-your interest, here performance will be weighted more than before! 
+// Server-side cache: key -> { data, fetchedAt }
+const curatedCache = new Map();
+const CURATED_TTL = 5 * 60 * 1000; // 5 minutes
+
+/* get all public portfolios, sort by top X_number - get best recommended by performance
+your interest, here performance will be weighted more than before!
 */
 router.get("/curated-portfolios/public", async (req, res) => {
   if (req.session.isGuest == true) {
-    res.json(
-      await prisma.portfolio.findMany({
-        include: {
-          user: {
-            select: {
-              username: true,
-            },
-          },
-        },
-        orderBy: {
-          id: "asc",
-        },
-        take: PUBLIC_PORTFOLIOS_NUMBER,
-      })
-    );
-    return;
+    const GUEST_KEY = "guest";
+    const guestCached = curatedCache.get(GUEST_KEY);
+    if (guestCached && Date.now() - guestCached.fetchedAt < CURATED_TTL) {
+      return res.json(guestCached.data);
+    }
+    const data = await prisma.portfolio.findMany({
+      where: { isPublic: true },
+      include: { user: { select: { username: true } } },
+      orderBy: { id: "asc" },
+      take: PUBLIC_PORTFOLIOS_NUMBER,
+    });
+    curatedCache.set(GUEST_KEY, { data, fetchedAt: Date.now() });
+    return res.json(data);
   }
-  const userId = req.session.userId;
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
-    },
-  });
-  const allPortfolios = await prisma.portfolio.findMany({
-    where: {
-      isPublic: true,
-    },
-    include: {
-      user: {
-        select: {
-          username: true,
-        },
-      },
-    },
-  });
-  // get companies that are in the portfolios and then score them similar to
-  portfolioScores = {};
-  for (let portfolio of allPortfolios) {
-    const portfolioCompanies = await prisma.company.findMany({
-      where: {
-        id: {
-          in: portfolio.companiesIds,
-        },
-      },
-      include: {
-        industry: {
-          select: {
-            id: true,
-            sector: { select: { id: true } },
-          },
-        },
-      },
-    });
-    let portfolioSum = 0;
-    portfolioCompanies.map((value) => {
-      portfolioSum += scoreValue(value, user, PORTFOLIO_PREFORMANCE);
-      return scoreValue(value, user, PORTFOLIO_PREFORMANCE);
-    });
 
-    portfolioScores[portfolio.id] =
-      portfolioSum / (portfolioCompanies.length - 1); // give slight preference to larger portfolios --- ie, dont want recommendation to be all 1 company portfolios
+  const userId = req.session.userId;
+
+  // Serve from cache if fresh
+  const cached = curatedCache.get(userId);
+  if (cached && Date.now() - cached.fetchedAt < CURATED_TTL) {
+    return res.json(cached.data);
   }
+
+  const [user, allPortfolios] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.portfolio.findMany({
+      where: { isPublic: true },
+      include: { user: { select: { username: true } } },
+    }),
+  ]);
+
+  // Collect all unique company IDs across every portfolio — one query instead of N
+  const allCompanyIds = [...new Set(allPortfolios.flatMap((p) => p.companiesIds))];
+  const allCompanies = allCompanyIds.length
+    ? await prisma.company.findMany({
+        where: { id: { in: allCompanyIds } },
+        include: { industry: { select: { id: true, sector: { select: { id: true } } } } },
+      })
+    : [];
+  const companyById = Object.fromEntries(allCompanies.map((c) => [c.id, c]));
+
+  const portfolioScores = {};
+  for (const portfolio of allPortfolios) {
+    const companies = portfolio.companiesIds.map((id) => companyById[id]).filter(Boolean);
+    const sum = companies.reduce((acc, c) => acc + scoreValue(c, user, PORTFOLIO_PREFORMANCE), 0);
+    portfolioScores[portfolio.id] = companies.length > 1 ? sum / (companies.length - 1) : sum;
+  }
+
   const recommendedPortfolios = allPortfolios
     .sort((a, b) => portfolioScores[b.id] - portfolioScores[a.id])
     .slice(0, PUBLIC_PORTFOLIOS_NUMBER);
+
+  curatedCache.set(userId, { data: recommendedPortfolios, fetchedAt: Date.now() });
   res.json(recommendedPortfolios);
 });
 
