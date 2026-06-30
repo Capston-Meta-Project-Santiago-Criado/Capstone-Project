@@ -174,7 +174,8 @@ const CanalystConverter = () => {
           TCM Generator
         </h1>
         <p className="text-gray-400 text-sm">
-          Upload a Canalyst model to generate a TCM Historical Excel file in the club format.
+          Upload a Canalyst model to generate a formatted historicals Excel file in the club format.
+          Any unresolvable mismatches are highlighted in yellow.
           Get Canalyst models at{" "}
           <a
             href="https://research.alpha-sense.com/canalyst/models"
@@ -254,7 +255,7 @@ const CanalystConverter = () => {
             Generating… (this may take 10–20 seconds)
           </span>
         ) : (
-          "Generate & Download TCM"
+          "Generate Formatted Historicals"
         )}
       </button>
 
