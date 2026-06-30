@@ -89,60 +89,17 @@ const normalizeSummary = (out) => ({
   sourceNote: cleanStr(out.sourceNote),
 });
 
-// Generate the per-company summary. `tenK` is the most-recent 10-K Document row
-// ({ url, filed_date }) or null.
-async function generateCompanySummary(company, tenK) {
+async function generateCompanySummary(company) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const baseSystem =
-    "You are an equity research analyst. Write a concise, accurate business summary of the company, " +
-    "focusing especially on its REVENUE BREAKDOWN by reportable segment, product line, or geography, " +
-    "with approximate percentages of total revenue. Do not give buy/sell/hold or price-target advice. " +
-    "When you have the breakdown, call the return_company_summary tool.";
-
-  // Attempt 1 — ground in the most recent 10-K via the web_fetch server tool.
-  if (tenK?.url) {
-    try {
-      const resp = await client.beta.messages.create({
-        model: MODEL,
-        max_tokens: 1500,
-        temperature: 0.3,
-        betas: ["web-fetch-2025-09-10"],
-        system: baseSystem,
-        tools: [
-          { type: "web_fetch_20250910", name: "web_fetch", max_uses: 3, max_content_tokens: 60000 },
-          summaryTool,
-        ],
-        messages: [
-          {
-            role: "user",
-            content:
-              `Company: ${company.name} (${company.ticker}).\n` +
-              `Fetch this most-recent 10-K and base the revenue breakdown on its segment disclosures ` +
-              `(the segment footnote / Item 7 MD&A): ${tenK.url}\n` +
-              `Then call return_company_summary with the segment percentages.`,
-          },
-        ],
-      });
-      const out = extractTool(resp, "return_company_summary");
-      if (out && Array.isArray(out.segments) && out.segments.length) {
-        return {
-          ...normalizeSummary(out),
-          source: "10-K",
-          filingUrl: tenK.url,
-          filedDate: tenK.filed_date ? new Date(tenK.filed_date).toISOString() : null,
-        };
-      }
-    } catch (_) {
-      // web_fetch unavailable / SEC blocked / extraction failed -> general knowledge
-    }
-  }
-
-  // Attempt 2 — general knowledge fallback.
   const resp = await client.messages.create({
     model: MODEL,
     max_tokens: 1500,
     temperature: 0.3,
-    system: baseSystem + " No filing is available, so use your general knowledge and clearly treat the percentages as approximate.",
+    system:
+      "You are an equity research analyst. Write a concise, accurate business summary of the company, " +
+      "focusing especially on its REVENUE BREAKDOWN by reportable segment, product line, or geography, " +
+      "with approximate percentages of total revenue. Do not give buy/sell/hold or price-target advice. " +
+      "Call the return_company_summary tool with your answer.",
     tools: [summaryTool],
     tool_choice: { type: "tool", name: "return_company_summary" },
     messages: [
@@ -150,8 +107,8 @@ async function generateCompanySummary(company, tenK) {
         role: "user",
         content:
           `Company: ${company.name} (${company.ticker})` +
-          (company.description ? `. Reference description: ${String(company.description).slice(0, 1500)}` : "") +
-          `.\nGive a concise business summary and an approximate revenue breakdown by segment / product / geography.`,
+          (company.description ? `. Context: ${String(company.description).slice(0, 1500)}` : "") +
+          `.\nProvide a concise business summary and an approximate revenue breakdown by segment / product / geography.`,
       },
     ],
   });

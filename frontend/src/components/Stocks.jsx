@@ -7,6 +7,7 @@ const Stocks = ({
   companiesData,
   companiesStockData,
   portfolioData,
+  setPortfolioData,
   portfolioValue,
   setPortfolioValue,
   perms,
@@ -51,12 +52,20 @@ const Stocks = ({
 
   const saveStocks = async () => {
     setIsSaving(true);
-    await fetch(`${BASE_URL}/portfolios/update/${portfolioData.id}`, {
+    const companyStocks = portfolioData.companiesIds.map((id) => {
+      const index = companiesData.findIndex((company) => company.id === id);
+      return index >= 0 ? (shares[index] ?? 1) : 1;
+    });
+    const response = await fetch(`${BASE_URL}/portfolios/update/${portfolioData.id}`, {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyStocks: shares }),
+      body: JSON.stringify({ companyStocks }),
     });
+    if (response.ok) {
+      const updatedPortfolio = await response.json();
+      setPortfolioData(updatedPortfolio);
+    }
     setIsSaving(false);
     setIsSaved(true);
   };
@@ -71,7 +80,7 @@ const Stocks = ({
           <h2 className="font-bold text-lg text-white">Holdings</h2>
           <p className="text-sm text-gray-400 mt-0.5">
             Total value:{" "}
-            <span className="text-emerald-400 font-bold">${portfolioValue}</span>
+            <span className="text-emerald-400 font-bold">{portfolioValue}</span>
           </p>
         </div>
         {canEdit && !isSaved && (
@@ -128,7 +137,7 @@ const Stocks = ({
 
               {/* Price */}
               <div className="text-right w-20">
-                <p className="text-sm font-mono text-white">${price.toFixed(2)}</p>
+                <p className="text-sm font-mono text-white">{price.toFixed(2)}</p>
               </div>
 
               {/* Change % — dedicated column */}
@@ -182,7 +191,7 @@ const Stocks = ({
 
               {/* Total value */}
               <div className="text-right w-24">
-                <p className="text-sm font-mono text-emerald-400">${totalVal}</p>
+                <p className="text-sm font-mono text-emerald-400">{totalVal}</p>
                 <p className="text-xs text-gray-500">{company.sector}</p>
               </div>
             </div>

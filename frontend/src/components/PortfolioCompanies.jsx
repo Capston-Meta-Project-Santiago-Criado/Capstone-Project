@@ -79,7 +79,7 @@ const PortfolioCompanies = ({
                     "text-emerald-400": isPositive,
                     "text-red-400": !isPositive,
                   })}>
-                    ${companiesStockData[ind].price.toFixed(2)}
+                    {companiesStockData[ind].price.toFixed(2)}
                     <span className="text-xs ml-1.5 opacity-80">
                       {isPositive ? "+" : ""}{percentChange}%
                     </span>

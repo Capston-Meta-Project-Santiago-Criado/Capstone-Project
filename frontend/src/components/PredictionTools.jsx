@@ -1,5 +1,5 @@
 import LineChart from "./predictiontools/LineChart";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BASE_URL } from "../lib/utils";
 import { UserInfo } from "../context/UserContext";
 import { socket } from "../socket";
@@ -214,6 +214,23 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
   })();
 
   const hasCompanies = companiesData != null && companiesData.length > 0;
+  const chartHistoricalData = useMemo(() => {
+    if (!historicalData?.length || portfolioValue == null) return historicalData;
+    const currentValue = Number(portfolioValue);
+    if (!Number.isFinite(currentValue) || currentValue <= 0) return historicalData;
+
+    const today = new Date().toISOString().slice(0, 10);
+    const next = [...historicalData];
+    const lastIndex = next.length - 1;
+    const currentPoint = { date: today, value: parseFloat(currentValue.toFixed(2)) };
+
+    if (next[lastIndex]?.date === today) {
+      next[lastIndex] = currentPoint;
+    } else {
+      next.push(currentPoint);
+    }
+    return next;
+  }, [historicalData, portfolioValue]);
 
   return (
     <div className="bg-[#0f0f14] border border-white/8 rounded-xl overflow-hidden flex flex-col">
@@ -299,7 +316,7 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
             {/* Balance + prediction */}
             <div className="pt-3 border-t border-white/8">
               <p className="text-xs text-gray-500 uppercase font-mono tracking-wider mb-1">Balance</p>
-              <p className="text-base font-bold text-white">${parseFloat(portfolioValue).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              <p className="text-base font-bold text-white">{parseFloat(portfolioValue).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
               {predictedBalance != null && (() => {
                 const diff = predictedBalance - portfolioValue;
                 const pct = ((diff / portfolioValue) * 100).toFixed(2);
@@ -308,7 +325,7 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
                   <>
                     <p className="text-xs text-gray-500 uppercase font-mono tracking-wider mt-3 mb-0.5">30-Day Forecast</p>
                     <p className={`text-sm font-bold ${up ? "text-emerald-400" : "text-red-400"}`}>
-                      ${parseFloat(predictedBalance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {parseFloat(predictedBalance).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <p className={`text-xs font-semibold ${up ? "text-emerald-400" : "text-red-400"}`}>
                       {up ? "+" : ""}{pct}%
@@ -418,13 +435,13 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
             )}
             <LineChart
               portfolioName={portfolioData.name}
-              historicalData={historicalData}
+              historicalData={chartHistoricalData}
               predictionData={predictionData}
               pastEarnings={(() => {
-                if (!historicalData?.length || !earningsData.length) return [];
+                if (!chartHistoricalData?.length || !earningsData.length) return [];
                 const today = new Date().toISOString().slice(0, 10);
-                const chartStart = historicalData[0].date;
-                const chartEnd = historicalData[historicalData.length - 1].date;
+                const chartStart = chartHistoricalData[0].date;
+                const chartEnd = chartHistoricalData[chartHistoricalData.length - 1].date;
                 return earningsData.filter(
                   (e) => e.earningsDate < today && e.earningsDate >= chartStart && e.earningsDate <= chartEnd
                 );

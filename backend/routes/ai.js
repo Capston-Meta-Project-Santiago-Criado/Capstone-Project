@@ -541,11 +541,7 @@ router.get("/company-summary/:companyId", async (req, res, next) => {
       const fresh = await prisma.company.findUnique({ where: { id: companyId } });
       if (fresh?.aiSummary) return { summary: fresh.aiSummary, generatedAt: fresh.aiSummaryGeneratedAt };
 
-      const tenK = await prisma.document.findFirst({
-        where: { companyId, type: "10-K" },
-        orderBy: { filed_date: "desc" },
-      });
-      const summary = await generateCompanySummary(company, tenK);
+      const summary = await generateCompanySummary(company);
       const updated = await prisma.company.update({
         where: { id: companyId },
         data: { aiSummary: summary, aiSummaryGeneratedAt: new Date() },

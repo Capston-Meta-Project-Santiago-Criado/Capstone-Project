@@ -364,7 +364,7 @@ const CompanyInfo = () => {
           {stockData && (
             <div className="flex items-center gap-3 mt-2">
               <span className="text-2xl font-bold text-white">
-                ${stockData.regularMarketPrice?.toFixed(2)}
+                {stockData.regularMarketPrice?.toFixed(2)}
               </span>
               {dailyChangePct && (
                 <span
@@ -441,8 +441,8 @@ const CompanyInfo = () => {
               {[
                 ["Sector", info.industry?.sector?.name ?? "Unknown"],
                 ["Industry", info.industry?.name ?? "Unknown"],
-                ["Previous Close", previousClose != null ? `$${previousClose.toFixed(2)}` : "N/A"],
-                ["Day Move", priceChange != null && dailyChangePct != null ? `${priceChange >= 0 ? "+" : ""}$${priceChange.toFixed(2)} (${dailyChangePct}%)` : "N/A"],
+                ["Previous Close", previousClose != null ? previousClose.toFixed(2) : "N/A"],
+                ["Day Move", priceChange != null && dailyChangePct != null ? `${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(2)} (${dailyChangePct}%)` : "N/A"],
                 ["Ticker", info.ticker],
                 ["Updated", lastUpdated ?? "N/A"],
               ].map(([label, value]) => (

@@ -58,9 +58,6 @@ const getPolygonQuote = async (ticker) => {
   }
 };
 
-const { FinlightApi } = require("finlight-client");
-const newsApiToken = process.env.news;
-const client = new FinlightApi({ apiKey: newsApiToken });
 const { updateAllCompanies } = require("../populators/tickers");
 
 //constants
@@ -255,6 +252,14 @@ router.get("/companyById/:id", async (req, res) => {
       where: {
         id,
       },
+      include: {
+        industry: {
+          select: {
+            name: true,
+            sector: { select: { name: true } },
+          },
+        },
+      },
     }),
   );
 });
@@ -275,65 +280,78 @@ router.get("/documents/:id", async (req, res) => {
 });
 
 // get company news data!
+const finnhubCompanyNews = (ticker, from, to) =>
+  new Promise((resolve, reject) =>
+    finnhubClient.companyNews(ticker, from, to, (err, data) => (err ? reject(err) : resolve(data ?? [])))
+  );
+
 router.get("/news/:id", async (req, res) => {
-  const id = parseInt(req.params.id);
+  try {
+    const id = parseInt(req.params.id);
 
-  const company = await prisma.company.findUnique({
-    where: {
-      id,
-    },
-  });
+    const company = await prisma.company.findUnique({ where: { id } });
+    if (!company) return res.status(404).json({ message: "Company not found" });
 
-  if (company == null) {
-    res.status(404).json({
-      message: "company is not in database / is not pubically traded",
+    // Return cached articles if they were refreshed within the last 5 hours
+    let currentArticles = await prisma.article.findMany({
+      where: { companyId: id },
+      orderBy: [{ publishDate: "desc" }, { created_at: "desc" }],
+      take: 12,
     });
-  }
-  const companyName = company.name;
-
-  let currentArticles = await prisma.article.findMany({
-    where: { companyId: id },
-    orderBy: { created_at: "desc" },
-  });
-  if (currentArticles.length !== 0) {
-    if (currentArticles[0].created_at - Date.now() < 18000000) {
-      // 5 hour update cycle
-      res.status(200).json(currentArticles);
-      return;
+    if (currentArticles.length > 0) {
+      const newestCacheTime = Math.max(...currentArticles.map((a) => new Date(a.created_at).getTime()));
+      if (Date.now() - newestCacheTime < 5 * 60 * 60 * 1000) {
+        return res.status(200).json(currentArticles);
+      }
     }
-  }
-  // we have not updated news articles in over 5 hours ( I only get 166 api calls a day, so we cache results)
-  const response = await client.articles.getBasicArticles({
-    query: companyName,
-  });
-  for (let article of response.articles) {
-    await prisma.article.upsert({
-      // upsert to avoid repeated articles on updates
-      where: {
-        link: article.link,
-      },
-      update: {},
-      create: {
-        link: article.link,
-        source: article.source,
-        title: article.title,
-        summary: article.summary,
-        publishDate: new Date(article.publishDate),
-        language: article.language,
-        images: article.images,
-        companyId: company.id,
-      },
+
+    // Fetch from Finnhub (last 90 days)
+    const to = new Date().toISOString().split("T")[0];
+    const from = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    let articles;
+    try {
+      articles = await finnhubCompanyNews(company.ticker, from, to);
+    } catch (err) {
+      if (currentArticles.length > 0) return res.status(200).json(currentArticles);
+      return res.status(502).json({ error: err.message || "Could not fetch news" });
+    }
+
+    for (const article of articles) {
+      if (!article.url || !article.headline) continue;
+      await prisma.article.upsert({
+        where: { link: article.url },
+        update: {
+          source: article.source ?? "",
+          title: article.headline,
+          summary: article.summary ?? "",
+          publishDate: article.datetime ? new Date(article.datetime * 1000) : new Date(),
+          language: "en",
+          images: article.image ? [article.image] : [],
+          companyId: id,
+        },
+        create: {
+          link: article.url,
+          source: article.source ?? "",
+          title: article.headline,
+          summary: article.summary ?? "",
+          publishDate: article.datetime ? new Date(article.datetime * 1000) : new Date(),
+          language: "en",
+          images: article.image ? [article.image] : [],
+          companyId: id,
+        },
+      });
+    }
+
+    currentArticles = await prisma.article.findMany({
+      where: { companyId: id },
+      orderBy: [{ publishDate: "desc" }, { created_at: "desc" }],
+      take: 12,
     });
+    res.status(200).json(currentArticles);
+  } catch (err) {
+    res.status(500).json({ error: err.message || "Could not load news" });
   }
-
-  currentArticles = await prisma.article.findMany({
-    where: { companyId: id },
-    orderBy: { created_at: "desc" },
-  });
-
-  res.status(200).json(currentArticles);
 });
-
 // get company logo from Finnhub profile
 router.get("/logo/:ticker", async (req, res) => {
   const ticker = req.params.ticker.toUpperCase();

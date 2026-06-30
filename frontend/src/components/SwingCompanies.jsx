@@ -120,7 +120,7 @@ const SwingCompanies = ({
                   {isUp ? "+" : ""}{row.pct.toFixed(2)}%
                 </div>
                 <div className={`text-right w-24 text-sm font-mono ${pnlUp ? "text-emerald-400" : "text-red-400"}`}>
-                  {pnlUp ? "+$" : "-$"}{Math.abs(row.pnl).toFixed(2)}
+                  {pnlUp ? "+" : "-"}{Math.abs(row.pnl).toFixed(2)}
                 </div>
               </div>
             );

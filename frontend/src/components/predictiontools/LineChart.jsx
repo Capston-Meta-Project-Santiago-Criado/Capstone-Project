@@ -127,7 +127,7 @@ const LineChart = ({
         bodyColor: "rgba(255,255,255,0.65)",
         callbacks: {
           label: (ctx) =>
-            ` ${ctx.dataset.label}: $${parseFloat(ctx.parsed.y).toLocaleString("en-US", {
+            ` ${ctx.dataset.label}: ${parseFloat(ctx.parsed.y).toLocaleString("en-US", {
               minimumFractionDigits: 2,
               maximumFractionDigits: 2,
             })}`,
@@ -145,13 +145,13 @@ const LineChart = ({
         ticks: {
           color: TICK_COLOR,
           font: { size: 10 },
-          callback: (v) => `$${v.toLocaleString()}`,
+          callback: (v) => v.toLocaleString(),
         },
         grid: { color: GRID_COLOR },
         border: { color: GRID_COLOR },
         title: {
           display: true,
-          text: "Portfolio Value ($)",
+          text: "Portfolio Value",
           color: LABEL_COLOR,
           font: { size: 11 },
         },

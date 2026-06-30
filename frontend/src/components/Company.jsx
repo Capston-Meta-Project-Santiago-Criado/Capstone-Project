@@ -69,7 +69,7 @@ const Company = ({ companyFacts, mode }) => {
             "text-base": mode === MODE_FIT,
           })}
         >
-          ${companyFacts.daily}
+          {companyFacts.daily}
         </span>
         <span
           className={cn("text-xs font-semibold px-1.5 py-0.5 rounded", {
