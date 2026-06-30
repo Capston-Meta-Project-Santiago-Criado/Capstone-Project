@@ -151,26 +151,32 @@ function parseCanalyst(buffer) {
     }
   }
 
+  // --- Income statement anchor (As-Reported) ---
+  // Anchor on the standardized "Income Statement - As Reported" section. Its
+  // revenue line also drives historical-period selection below: Canalyst leaves
+  // the As-Reported statements blank for future/estimate periods, so a populated
+  // As-Reported revenue cell is the most reliable "this is an actual" signal —
+  // far more robust than comparing the fiscal-year-end date to today, which
+  // wrongly admits the current-year forecast at/after the fiscal-year boundary.
+  const isRows  = getISRows(ws, labelMap);
+  const isMatch = (re, exclude) => matchISRow(isRows, re, exclude);
+  const reportedRevRow = isMatch(/^(net sales|net revenue|revenues?|total revenue|total net sales)/i, /cost|consensus|guidance|growth|organic/i);
+
   // --- Select historical (actual) periods ---
-  // A period is an actual if its fiscal period has already ended (date <= today)
-  // OR Canalyst explicitly tagged it as reported in row 2 ("Unrestated"/"Restated").
-  // We deliberately do NOT cap at the latest row-2 marker: Canalyst frequently marks
-  // only a single column, which would wrongly drop other already-completed periods
-  // (e.g. surfacing FY2017–FY2022 instead of the six most recent years). Future
-  // projections (date > today and unmarked) are still excluded.
   const today = new Date();
   const hasActualMarker = (c) => {
     const cell = ws[XLSX.utils.encode_cell({ r: 1, c })];
     return cell != null && typeof cell.v === "string" && /restated/i.test(cell.v);
   };
-  const isActual = (col) =>
-    (col.date instanceof Date && col.date <= today) || hasActualMarker(col.colIdx);
+  const isActual = (col) => {
+    // Primary: As-Reported revenue is populated (blank for estimate periods).
+    if (reportedRevRow != null) return getCellVal(ws, reportedRevRow, col.colIdx) != null;
+    // Fallback (model has no As-Reported section): fiscal period has ended, or
+    // Canalyst tagged the column as reported in row 2.
+    return (col.date instanceof Date && col.date <= today) || hasActualMarker(col.colIdx);
+  };
 
-  const revRowIdx = findRowIdx(labelMap, PL_LABELS.revenue);
-  const historicalAnnual = annualCols.filter(col => {
-    if (revRowIdx != null && getCellVal(ws, revRowIdx, col.colIdx) == null) return false;
-    return isActual(col);
-  });
+  const historicalAnnual = annualCols.filter(isActual);
   const selectedAnnual = historicalAnnual.slice(-6);  // 6 most recent FY
 
   const historicalQuarterly = quarterlyCols.filter(isActual);
@@ -180,12 +186,8 @@ function parseCanalyst(buffer) {
   const hasData = (d) => d.annual.some(v => v != null) || d.quarterly.some(v => v != null);
 
   // --- P&L data ---
-  // Anchor on the standardized "Income Statement - As Reported" section (robust
-  // across companies), with the bespoke top-of-sheet summary labels as fallback.
-  const isRows  = getISRows(ws, labelMap);
-  const isMatch = (re, exclude) => matchISRow(isRows, re, exclude);
-
-  const revRow   = isMatch(/^(net sales|net revenue|revenues?|total revenue|total net sales)/i, /cost|consensus|guidance|growth|organic/i) ?? findRowIdx(labelMap, PL_LABELS.revenue);
+  // isRows / isMatch / reportedRevRow were computed above (period selection).
+  const revRow   = reportedRevRow ?? findRowIdx(labelMap, PL_LABELS.revenue);
   const cogsRow  = isMatch(/^(cogs|cost of (sales|revenue|goods))/i) ?? findRowIdx(labelMap, PL_LABELS.cogs);
   const gpRow    = isMatch(/^gross profit/i) ?? findRowIdx(labelMap, PL_LABELS.grossProfit);
   const opIncRow = isMatch(/^(operating (income|loss)|income \(loss\) from operations|(income|loss) from operations|total operating income)/i) ?? findRowIdx(labelMap, PL_LABELS.ebit);
@@ -195,7 +197,9 @@ function parseCanalyst(buffer) {
   const ebtRow   = isMatch(/before (the )?(provision for |benefit from )?income tax|before income tax|pre-?tax income/i) ?? findRowIdx(labelMap, PL_LABELS.ebt);
   const curTaxRow= isMatch(/^current (income )?tax/i) ?? findRowIdx(labelMap, PL_LABELS.curTax);
   const defTaxRow= isMatch(/^deferred (income )?tax/i) ?? findRowIdx(labelMap, PL_LABELS.defTax);
-  const incTaxRow= isMatch(/provision for income tax|income tax (expense|provision|benefit)|^total income tax/i);
+  // Single combined income-tax line. Tolerate inserted parentheticals such as
+  // "Provision for (benefit from) income tax" and "Income tax (provision) benefit".
+  const incTaxRow= isMatch(/(provision for|benefit from).*income tax|income tax(es)? ?\(?(expense|provision|benefit)|^(total )?income tax(es)?$/i);
   const niRow    = isMatch(/^net (income|loss) attributable to/i, /non-?controlling|nci|minority/i)
                 ?? isMatch(/^net (income|loss)( \(loss\))?$/i)
                 ?? findRowIdx(labelMap, PL_LABELS.netIncome);
