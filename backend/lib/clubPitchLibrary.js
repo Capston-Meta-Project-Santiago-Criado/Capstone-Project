@@ -176,6 +176,174 @@ const CLUB_PITCHES = [
       "Thin micro-cap liquidity amplifies drawdowns",
     ],
   },
+  {
+    company: "Match Group",
+    ticker: "MTCH",
+    sector: "Internet - online dating apps",
+    pitchType: "Short",
+    analysts: ["Tiffany Kim", "David Ji", "Helen Liu", "Brian Karle", "Joyce Liu"],
+    thesis:
+      "Short: structural industry headwinds, core revenue driver Tinder cannot grow engagement, and Hinge cannot offset Tinder's decline - leaving a low-growth platform with limited upside. Market already prices it as a slow-growth cash-flow platform dependent on Hinge while waiting for Tinder to stabilize.",
+    businessModel:
+      "20+ dating apps but >75% of revenue from Tinder + Hinge. Tinder (largest/highest-grossing, casual/young), Hinge (serious, fastest-growing, international), Evergreen & Emerging (Match, Meetic, OkCupid, POF + niche), MG Asia (Pairs, Azar). Monetized via subscriptions + a-la-carte features + ads; ~50% of global dating-app revenue.",
+    modelingApproach:
+      "Short framed as payers x revenue-per-payer (RPP) by app, engagement/MAU decline, and a take-price ceiling, with Hinge-offset and mix-margin analysis (Tinder ~55% adj. EBITDA margin vs Hinge ~36%; intl migration = ~19pp margin contraction). Delta-to-consensus (consensus Hinge $1B by 2027 viewed as too optimistic). Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - Structural headwinds: Gen Z views swipe dating as cringe/low-status; inverse network economics (noise, ghosting, fatigue) degrade the experience as platforms scale; social media substitutes the meet-people function.",
+      "TP2 - Tinder structurally broken: negative gender-ratio flywheel (women leave first), RPP +5% but payers -8% in Q4'25 -> price lever exhausted ($9.99 -> $24.99 Plus, $49.99 Platinum), product 'enshittification'.",
+      "TP3 - Hinge can't offset: it's 'designed to be deleted' (not a top-of-funnel like Tinder, which sources ~half of Hinge users); RPP already ~$32.96 (capped); intl expansion is cannibalistic and margin-dilutive.",
+    ],
+    cases: {
+      bear: "Short risk: Tinder turnaround under new CEO (ex-Zillow Rascoff) reaccelerates engagement",
+      base: "Flat ~2026 revenue, slow-growth Hinge-dependent platform, limited upside",
+      bull: "Accelerating category decline + Hinge fails to offset Tinder",
+    },
+    keyDrivers: [
+      "Tinder payers & RPP (engagement)",
+      "Hinge growth & margin mix (~36% vs Tinder ~55%)",
+      "Industry engagement (Gen Z aversion)",
+      "International expansion economics (cannibalization)",
+      "Gender-ratio dynamics",
+    ],
+    comps: "Bumble (~24% share; women-first positioning). Top 3 = Tinder (25%) / Bumble (24%) / Hinge (18%).",
+    keyRisks: [
+      "Tinder turnaround succeeds",
+      "Consistent dividends & buybacks / sustained FCF yield",
+      "Activist interest",
+    ],
+  },
+  {
+    company: "Dropbox",
+    ticker: "DBX",
+    sector: "Software - cloud file sync & sharing (FSS)",
+    pitchType: "Short",
+    thesis:
+      "Short: a melting ice cube - subscale player in commoditized FSS. Consensus models top-line stabilization by FY27 despite AI bundling by Microsoft/Google driving accelerated user declines and limited ARPU growth. Dash (AI search) is hyped but subpar, has no traction, and drags operating margin. Base case 2Y PT $15.61 (0.6x MOIC / 24.3% IRR).",
+    businessModel:
+      "Subscription FSS, ~18M paying users / $2.5B ARR, <3% paid penetration of 700M accounts, ~90% self-serve (consumers/SMBs). Three buckets: Core FSS, Adjacencies (Sign, DocSend, Replay - immaterial), Dash (2024 AI universal-search, ~$1-3M revenue, no committed enterprise customers).",
+    modelingApproach:
+      "Paying users x ARPU build into a secular-decline thesis. FY28E revenue ~4.4% below consensus, GAAP NI ~15% below. Base: capitalize $2.40 FY28E GAAP EPS at 6.5x fwd P/E -> $15.61, 24.3% IRR / 0.6x MOIC over 2Y. Bear: stabilization, $2.26 EPS at 14.0x -> -12.3% IRR / 1.2x MOIC. Heavy expert/channel checks. Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - Subscale structural loser in FSS: storage is commoditized, DBX charges 7-20% more for a narrower offering, ARPU fell YoY for the first time in FY25; AI raises opportunity cost (Copilot/Gemini) and lowers switching cost (MSFT Migration Assistant); enterprise teams declining (600k FY22 -> ~575k FY25).",
+      "TP2 - Dash hype unsubstantiated + margin drag: structurally dependent on third-party APIs, priced out by ecosystems that bundle search for free; intense startup competition (Glean $7.2B, Guru, Unleash, Coveo); insufficient R&D to win.",
+    ],
+    cases: {
+      bear: "Paying-user declines stabilize, ARPU flat, R&D moderates -> $2.26 FY28E EPS at 14.0x -> -12.3% IRR / 1.2x MOIC (short loses)",
+      base: "Declining users + compressing ARPU + elevated R&D -> $2.40 FY28E EPS at 6.5x -> $15.61, 24.3% IRR / 0.6x MOIC",
+      bull: "Accelerating secular decline as AI bundling widens the value gap",
+    },
+    keyDrivers: [
+      "Paying users (churn to MSFT/Google)",
+      "ARPU (down-sells to lower tiers)",
+      "R&D / EBIT margin (Dash drag)",
+      "Competitive AI bundling",
+      "Forward P/E multiple",
+    ],
+    comps:
+      "Microsoft (OneDrive/SharePoint), Google (Drive) - bundled ecosystems; Box, Egnyte - enterprise. Dash vs Glean / Guru / Unleash / Coveo.",
+    keyRisks: ["Takeout risk (deemed low)", "Short squeeze (~16% of float short, share count shrinking)"],
+  },
+  {
+    company: "Montana Aerospace",
+    ticker: "AERO",
+    sector: "Industrials - aerostructures (Tier-2 aerospace supplier)",
+    pitchType: "Long",
+    analysts: ["Liam Tenenbaum", "George Ma", "Jane Rubenstein", "Ralitsa Hovanessian", "Lorenzo Lizzeri"],
+    thesis:
+      "Long: vertically integrated, single-source aerostructures supplier benefiting from the multi-year OEM delivery ramp against a ~10-year Boeing/Airbus backlog. Pure-play transition (divested e-mobility & energy) + improved capital allocation drive 20%+ growth, net-debt-free, at a reasonable 17.5x EV/EBIT with a likely large beat to conservative FY26 guidance. Base: EUR398 EBIT FY29, 28.2% IRR over 4Y.",
+    businessModel:
+      "16 sites in 10 countries. Aerostructures ~91% (structural/critical/functional aircraft components + aluminum/titanium space parts for SpaceX, Airbus D&S, Lockheed); customer split ~40/40/20 Boeing/Airbus/other, ~50/50 narrowbody/widebody. Other ~9% (Alpine Metal Tech 'asset for disposal', holding co).",
+    modelingApproach:
+      "Revenue build off the OE delivery ramp x continued market-share gains; EBIT-margin expansion (~200bps/yr) from vertical integration & Design Authority; FCF conversion (~87% of EBIT by 2029). Base: capitalize EUR398 FY30 EBIT at 13.5x EV/EBIT -> 28.2% IRR / 2.6x MOIC. Frames a 17.1% FY29 revenue beat / 66.1% EBIT beat vs consensus. Heavy expert calls (ex-ASCO CEO). Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - Vertical integration & single-source (90% of portfolio sole-qualified; 20-30yr program life; Design Authority on A350/A220 keeps 100% of cost savings; full commodity pass-through) -> margin visibility, share gains, and a near-term guidance-beat catalyst.",
+      "TP2 - OE delivery ramp (Boeing/Airbus deliveries +17%/+11%/+9% in '26-'28; ~10yr backlog) with AERO outgrowing the market (28% segment CAGR vs 14% OE deliveries '20-'25; +32.5% in 2024 despite -12% industry).",
+      "TP3 - Capital allocation post-divestment: net-debt-free by YE26, ~EUR1.17B cumulative FCF FY26-29 for tuck-in M&A, buybacks/dividends, potential US dual-listing; founder owns 50.1% with recent insider buys.",
+    ],
+    cases: {
+      bear: "Lower-than-expected OEM production rates / supply-chain or FX drag",
+      base: "EUR398 FY30 EBIT at 13.5x EV/EBIT -> 28.2% IRR / 2.6x MOIC over 4Y",
+      bull: "Larger guidance beat as the delivery ramp accelerates past conservative management assumptions",
+    },
+    keyDrivers: [
+      "OE delivery ramp (Boeing/Airbus)",
+      "Market-share gains (vs Tier-2 peers)",
+      "EBIT-margin expansion (~200bps/yr)",
+      "FCF conversion (~87% of EBIT)",
+      "EV/EBIT multiple (pure-play re-rate)",
+      "FY26 guidance beat",
+    ],
+    comps: "Tier-2 peers: Spirit AeroSystems, GKN Aerospace, Premium AEROTEC (also ASCO, Figeac).",
+    keyRisks: ["Lower OEM production rate", "Supply-chain volatility from macro/tariffs", "FX volatility"],
+  },
+  {
+    company: "Fannie Mae",
+    ticker: "FNMA",
+    sector: "Financials - mortgage credit guarantee (GSE); special situation",
+    pitchType: "Long (special situation / paired)",
+    analysts: ["Marina Peng", "Alex Cheng", "Jay Crowther", "Aydin Turgut"],
+    thesis:
+      "Long special-situation: high-quality mortgage-guarantee business with a misunderstood near-term setup and complex capital structure. Market inefficiently prices the odds of a normalization transaction (NYSE relisting / recap / exit from conservatorship). Paired trade: 200bps long common (FNMA) + 200bps long junior preferred (FNMAS) to hedge holdout risk. ~28.1% probability-weighted IRR at FY27 exit, 1.6x MOIC.",
+    businessModel:
+      "Asset-light credit-guarantee quasi-monopoly (congressional charter): ~$4T MBS guaranteed (25% housing share); Single-family ~84% of revenue (g-fees ~67bps), Multifamily ~16% (~90bps). Low-teens ROE; structurally subordinated to borrower equity (>20% home-price decline before loss); 90-day delinquencies <0.6%.",
+    modelingApproach:
+      "Probability-weighted scenario tree on deal outcomes (SPS forgiveness + Treasury warrant exercise; leverage ratio cut 4% -> 2.5%; junior-pref conversion at 60% of liquidation preference). Relisting valuation on P/B (base 1.5x P/B ~ 11x fwd P/E; downside ~1x P/B for litigation overhang). Paired long common + junior pref; base case 40% weighting; 30% holdout probability. -> 1.6x MOIC / 28.1% IRR. Bear/Base/Bull via scenario probabilities.",
+    thesisPoints: [
+      "TP1 - Relisting soon is likely: economically & politically aligned for all stakeholders (Treasury maximizes warrant value by keeping common large; junior pref/common get a non-zero 'tip' to avoid litigation); low-disruption, headline-friendly catalyst executable without full recap.",
+      "TP2 - Downside cushion: even if timing slips, the core guarantee business is structurally resilient and compounds GAAP equity at low-teens, making a future IPO more valuable.",
+      "TP3 - Capital requirement (4%) is excessive vs asset quality and likely cut to ~2.5% (per Ackman/Burry) to enable a viable post-conservatorship ROE.",
+    ],
+    cases: {
+      bear: "Treasury converts SPS to common / zeroes equity holders amid litigation -> ~1x P/B (or holdout, 30% prob)",
+      base: "(40% wt) SPS forgiven + warrants exercised, leverage to 2.5%, junior pref converts at 60% of liq pref, relist at 1.5x P/B",
+      bull: "Faster relisting + favorable terms; book compounds into a larger IPO value",
+    },
+    keyDrivers: [
+      "Relisting / conservatorship-exit timing & probability",
+      "Capital (leverage) requirement (4% -> 2.5%)",
+      "SPS forgiveness & warrant exercise",
+      "Junior-pref conversion ratio / holdout risk",
+      "P/B re-rating multiple",
+      "Core g-fee book growth (~2-3%/yr)",
+    ],
+    comps: "Insurers/financials trade >2x P/B and ~11-15x fwd P/E; private mortgage insurers MGIC, Radian.",
+    keyRisks: ["IPO/relisting takes longer than expected", "Treasury zeroes out all equity", "Political volatility", "Junior-preferred holdouts"],
+  },
+  {
+    company: "Upwork",
+    ticker: "UPWK",
+    sector: "Internet - online freelance / work marketplace",
+    pitchType: "Short",
+    thesis:
+      "Short: a melting ice cube facing secular AI pressure - non-AI GSV already declining and new AI GSV facing intense specialist competition. Consensus's expected 25pt+ enterprise-GSV acceleration is unlikely given low-value-add acquisitions and underinvestment in S&M, against a management team with a poor execution track record and recent insider sales. Base: $1.54 FY28E Adj. EPS at 8x fwd P/E -> 24.7% IRR / 0.6x MOIC over 2Y.",
+    businessModel:
+      "World's largest online work marketplace, $4.0B FY24 GSV. Marketplace ~86% (talent service fees, client fees, Connects/ads), Enterprise 'Lifted' ~14% (managed services + employer-of-record, where 100% of GSV is recognized as revenue).",
+    modelingApproach:
+      "Segment GSV build (marketplace vs enterprise) x take rate -> revenue, with an AI-disruption decomposition of GSV categories. Variant view: -17% marketplace GSV and -45.3% enterprise GSV vs consensus FY28E. Base: $1.54 FY28E Adj. EPS at 8x fwd P/E -> 24.7% IRR / 0.6x MOIC. Bear: GSV reaccelerates HSD, $2.44 EPS at 15.3x -> -23.6% IRR / 1.5x MOIC. Heavy expert/freelancer primary work. Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - Secular AI risk: non-AI GSV (~92% of marketplace) declining since 2023; ~60% of GSV in AI-exposed categories (Dev/IT, Admin/CS, Finance); AI GSV is only ~7.8% of GSV, undifferentiated, and competed by vertical specialists (Toptal, Andela, Turing, Braintrust).",
+      "TP2 - Enterprise re-acceleration flawed: 'Lifted' rebrand + Ascen/Bubty add little (same talent base); EOR mix is margin-dilutive (~24% GM); S&M was cut ~40% so the implied LTV/CAC and GP/client jumps are unrealistic.",
+      "TP3 - Management has little credibility: history of failed initiatives (Project Catalog, Upwork Business) and missed targets; heavy turnover (3 CFOs / 2 CTOs / 3 enterprise heads in 4yrs); recent insider sales.",
+    ],
+    cases: {
+      bear: "Short risk: client declines revert, GSV reaccelerates HSD, management hits ~13% rev / ~18% EBITDA -> $2.44 EPS at 15.3x -> -23.6% IRR / 1.5x MOIC",
+      base: "Marketplace & enterprise GSV below consensus -> $1.54 FY28E Adj. EPS at 8x -> 24.7% IRR / 0.6x MOIC",
+      bull: "Non-AI GSV declines accelerate + Lifted reaccel fails -> guidance cuts",
+    },
+    keyDrivers: [
+      "Marketplace GSV (AI disruption)",
+      "Enterprise/Lifted GSV & EOR margin mix",
+      "Take rate",
+      "S&M efficiency (LTV/CAC)",
+      "Forward P/E multiple",
+    ],
+    comps: "Fiverr (peer marketplace). Vertical specialists: Toptal, Andela, Braintrust, A.Team, Worksome, Turing.",
+    keyRisks: [
+      "AI GSV accelerates / AI disruption slower than modeled",
+      "Acquisitions drive enterprise reacceleration",
+      "S&M efficiency improves",
+    ],
+  },
 ];
 
 const formatCard = (p) => {
