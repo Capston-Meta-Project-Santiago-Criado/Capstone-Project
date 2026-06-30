@@ -444,6 +444,108 @@ const CLUB_PITCHES = [
       "Higher-quality medtech trading above SOLV's 14.5x exit: Smith & Nephew (15.3x), Envista (17.2x), Alcon (15.9x), Becton Dickinson (16.7x). Wound: Smith & Nephew, Molnlycke, ConvaTec, Cardinal. Dental: Dentsply Sirona, Envista, Align. HIS: Nuance/Microsoft, Epic, Oracle Health.",
     keyRisks: ["3M stake monetization overhang", "EPS growth back-loaded to FY27+", "TSA exit / separation execution"],
   },
+  {
+    company: "Compass Inc",
+    ticker: "COMP",
+    sector: "Real estate - residential brokerage / proptech",
+    pitchType: "Long",
+    analysts: ["Noah Altschuler", "Abhi Bansal", "Santiago Criado", "Katherine Lee", "Matthew Ottenbreit"],
+    thesis:
+      "Long: #1 US residential brokerage (~6% share with only ~1.5% agent share, luxury skew ~$1.1M avg transaction). A differentiated, proprietary tech platform drives structurally higher agent productivity and organic flow-share gains from fragmented incumbents; a long accretive tuck-in M&A runway (multiple arbitrage) plus a cyclical home-sales recovery and disciplined OpEx compound into outsized EBITDA. Revenue ~23% / Adj. EBITDA ~52% '25-'30 CAGR.",
+    businessModel:
+      "33,000-agent cloud-platform brokerage; ~88% of revenue from gross commissions (~18% take rate after agent splits), plus franchise (8%) and integrated services (4%). Grows inorganically via tuck-ins (Christie's $444M Jan-25; Anywhere/HOUS ~$1.6B announced Sep-25).",
+    modelingApproach:
+      "Organic agent flow-share build (NAR churn x COMP flow share rising ~5% -> ~23% by 2030) + productivity uplift (~+20% first year) + tuck-in M&A TAM (~100 targets / ~$335B GTV at 3.0-4.5x EBITDA vs COMP's 10-15x = multiple arb) + cyclical existing-home-sales recovery (4.1M -> 20yr-avg 5.1M, >25% uplift) + OpEx discipline (3-4% organic growth flowing straight to EBITDA). ~+9.3% revenue delta -> ~+38% Adj. EBITDA delta in 2030; EV/EBITDA exit (11x declining to 8x). Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - Tech platform: ~$1.8B cumulative R&D builds a unified data layer competitors (RE/MAX outsourced, eXp on kvCORE, ~5x levered legacy) can't finance; drives organic flow-share of churning agents (~5% '23 -> ~16% '25 -> ~23% '30) and +20% first-year productivity.",
+      "TP2 - M&A runway & multiple arb: tuck-ins at 3.0-4.5x pre-synergy vs COMP at 10-15x; paused 4Q25 for HOUS integration + deleveraging (~4.4x -> ~1.5x by 2028), resuming ~2028 for ~$10-15B GTV (3-4.5% annual inorganic tailwind).",
+      "TP3 - Cyclical + operating leverage: existing-home sales revert from ~4.1M toward the 5.1M 20yr average (>25% uplift) while OpEx grows only 3-4% -> gross profit flows directly to Adj. EBITDA.",
+    ],
+    cases: {
+      bear: "Home-sales cycle stays depressed / HOUS integration or leverage issues",
+      base: "PT ~$21-22; ~22.8% IRR on a 2029 exit (higher for nearer exits); ~23% rev / ~52% Adj. EBITDA '25-30 CAGR",
+      bull: "Faster home-sales recovery + M&A resumes + accelerating flow-share gains",
+    },
+    keyDrivers: [
+      "Organic agent flow share & productivity",
+      "Tuck-in M&A runway (multiple arb)",
+      "Existing-home-sales cycle (4.1M -> 5.1M)",
+      "OpEx discipline (operating leverage)",
+      "Net leverage (4.4x -> 1.5x by 2028)",
+      "EV/EBITDA exit multiple",
+    ],
+    comps:
+      "Anywhere/HOUS (~4-5%), Keller Williams (~4%), RE/MAX (~3-4%), eXp (~3%), Redfin (<1%). Top 10 brokerages only ~25-30% of transactions.",
+    keyRisks: ["Home-sales cycle stays depressed", "HOUS integration risk", "Leverage / deleveraging path", "M&A execution"],
+  },
+  {
+    company: "ICON plc",
+    ticker: "ICLR",
+    sector: "Healthcare - contract research organization (CRO)",
+    pitchType: "Long",
+    analysts: ["Marina Peng", "Alex Cheng", "Jay Crowther", "Aydin Turgut"],
+    thesis:
+      "Long: 2nd-largest CRO (~21% share). Market mistakes a cyclical trough for idiosyncratic weakness; ICLR disproportionately benefits from the FSO->FSP shift, and consensus wrongly rolls forward one-off vaccine (BARDA) cancellations. Bear case already priced in: trades at a 15Y-trough 12x NTM EPS and a -4.7x multiple spread to best comp IQV (vs -1.7x 5Y avg). ~500bps position, FYE-2028 exit, 22.1% blended IRR.",
+    businessModel:
+      "CRO serving pharma/biotech across trial phases II-IV. FSO (full-service, ~52%, long 5-15yr backlog, 35-40% GM), FSP (functional, ~28%, 1-3yr burn, 20-25% GM but annuity-like/sticky), Hybrid (~20%, 30-35% GM). Reports a single net revenue figure.",
+    modelingApproach:
+      "Gross-backlog-bookings build (~5.2% CAGR) with cancellations normalizing (13.5% '25E -> ~9% by '27) and burn rate flatlined at 33%; revenue 5.3% 4Y CAGR vs consensus 3.3% (~8.7% '29 beat). Exit 13.5x fwd P/E (vs ~19x historical) -> 22.1% IRR / 1.5x MOIC. Plus SG&A automation leverage (~130bps) and aggressive buybacks (>10% of shares through FYE26). Biologics pipeline phase-conversion build; heavy expert calls. Bear/Base/Bull (bear already in the price).",
+    thesisPoints: [
+      "TP1 - FSO->FSP beneficiary: largest FSP player (~21%); top-10 pharma now ~80% FSP; cost/operational control + the $65B->$450B (by 2030) LOE patent cliff push more FSP; ICLR's scale/data moat (Symphony, 17/20 pharma relationships) -> backlog flowshare 34.6% ('21) -> 43.3% ('24); Street wrongly implies share loss.",
+      "TP2 - Cyclical recovery: biopharma R&D trough is cyclical; demand inflection in 2026-27 (funding recovering, book-to-bill normalizing) propagating from early- to late-stage trials that ICLR (phases II-IV) serves.",
+      "TP3 - Cancellations peaked '25, normalize '26: BARDA COVID-vaccine cancellations are one-off; ex-BARDA book-to-bill ~1.15 (vs 1.02 reported); vaccines now ~1-2% of revenue.",
+      "TP4 - SG&A automation + buybacks: ~$3.5B FCF over N3Y at >100% conversion funds >10% buyback; attractive buyout candidate.",
+    ],
+    cases: {
+      bear: "Already priced in - consensus 3.3% rev CAGR (below end-market R&D growth) sets the floor",
+      base: "5.3% 4Y rev CAGR (8.7% '29 beat), exit 13.5x fwd P/E -> 22.1% IRR / 1.5x MOIC (FYE-2028)",
+      bull: "Faster biopharma recovery + FSP share gains + multiple re-rate toward historical ~19x",
+    },
+    keyDrivers: [
+      "FSP/FSO mix shift",
+      "Biopharma R&D recovery (book-to-bill)",
+      "Cancellation normalization (BARDA roll-off)",
+      "Backlog growth (~5.2%)",
+      "SG&A automation leverage",
+      "Buybacks / FCF conversion",
+      "P/E multiple re-rate (12x -> 13.5x)",
+    ],
+    comps:
+      "IQVIA (IQV) - closest comp (-4.7x spread vs -1.7x 5Y avg); PPD (Thermo Fisher); Parexel, Fortrea, Syneos, Medpace. Top 3 (ICON/IQVIA/PPD) ~61% share.",
+    keyRisks: ["Negative biopharma R&D revision", "Outsourcing behavior change from the patent cliff", "Regulatory uncertainty / funding cuts"],
+  },
+  {
+    company: "Intuit",
+    ticker: "INTU",
+    sector: "Software - SMB financial / accounting + consumer tax (QuickBooks, TurboTax)",
+    pitchType: "Long",
+    thesis:
+      "Long: investors underestimate the durability of Intuit's growth after a Spruce Point short report, AI-disruption fears in TurboTax, and a conservative FY26 guide cut the multiple to a 2Y trough (~27x from 35x). QuickBooks remains the monopolistic SMB system-of-record with mid-market right-to-win and underpenetrated platform services, and TurboTax keeps gaining dollar share via Live/Fully Assisted despite low-end DIY losses. Base: 3.7Y PT $1,340.33 (2.0x MOIC / 20.5% IRR).",
+    businessModel:
+      "Four segments: Global Business Solutions ~59% (QuickBooks: QBO 75% / QBD 25%), Consumer ~26% (TurboTax: DIY 52% / Live 43% / Desktop 5%), Credit Karma ~12%, ProTax ~3%.",
+    modelingApproach:
+      "QBO customer + ARPC build (~6% customer growth; ~13% ARPC = ~10% price/yr + ~3% mid-market mix shift) + platform-services ramp (payments take-rate inflection ~61 -> ~103bps, Capital, Bill Pay) + TurboTax mix-shift to Live/Fully Assisted (dollar share). Reverse-DCF shows consensus too bearish; ~10% / 16% / 21% beats to FY30 rev / adj. EBIT / adj. EPS. Capitalize adj. EPS at 28x -> $1,340.33 (2.0x MOIC / 20.5% IRR). Bear $784.01 (1.2x MOIC / 4.4% IRR, 21.5x) -> ~2.1x risk/reward. Heavy expert/Tegus calls + website price scrapes. Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - QuickBooks SMB monopoly + mid-market: ~65% share of 1-9 employee SMBs, ~90% flow share, 600k+ ProAdvisor accountant network, scale/brand/800+ integrations; ~10% price/yr with 8.4/10 value rating; Advanced + Intuit Enterprise Suite extend right-to-win up-market.",
+      "TP2 - Platform services scale faster than Street: AR/AP only ~2-8% penetrated (80% of bills still paid by check), incremental payments take rate ~103bps vs ~61bps blended, Capital ~2% penetrated, Bill Pay 4x'd volume.",
+      "TP3 - TurboTax risks overblown: AI/government (Direct File ended) fears overstated; low-end DIY share loss offset by higher-ARPU Live/Fully Assisted dollar-share gains; OBBBA tax-complexity tailwind to assisted filing.",
+    ],
+    cases: {
+      bear: "GBS decelerates to low-teens (harder mid-market) + LSD TurboTax (AI disruption) -> $784.01, 1.2x MOIC / 4.4% IRR at 21.5x",
+      base: "EPS compounding ~19% (mid-market + platform + Live mix) -> $1,340.33, 2.0x MOIC / 20.5% IRR at 28x",
+      bull: "Faster mid-market wins + platform-services inflection + TurboTax re-rate",
+    },
+    keyDrivers: [
+      "QBO customer & ARPC growth (price + mid-market mix)",
+      "Platform services (payments take-rate, Capital, Bill Pay)",
+      "TurboTax Live / Fully Assisted mix shift",
+      "AI (data moat, expert-assist efficiency)",
+      "P/E multiple re-rate",
+    ],
+    comps:
+      "Xero (~5% SMB), Sage Intacct, NetSuite (mid-market); BILL, Melio (payments); ADP, Paychex, Gusto, Rippling (payroll); H&R Block, FreeTaxUSA (tax); Credit Karma vs NerdWallet, LendingTree, SoFi.",
+    keyRisks: ["Competition / AI take TurboTax share", "SMB macro downturn (QuickBooks churn, Capital defaults, Credit Karma)", "Poor capital allocation (Mailchimp/Credit Karma history)"],
+  },
 ];
 
 const formatCard = (p) => {
