@@ -10,30 +10,6 @@ const prisma = new PrismaClient();
 
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
 
-let aiChatTableReady = false;
-
-const ensureAiChatTable = async () => {
-  if (aiChatTableReady) return;
-  await prisma.$executeRaw`
-    CREATE TABLE IF NOT EXISTS "AiChat" (
-      "id" SERIAL NOT NULL,
-      "title" TEXT NOT NULL,
-      "companyName" TEXT,
-      "ticker" TEXT,
-      "review" JSONB NOT NULL,
-      "metadata" JSONB,
-      "userId" INTEGER NOT NULL,
-      "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      CONSTRAINT "AiChat_pkey" PRIMARY KEY ("id")
-    )
-  `;
-  await prisma.$executeRaw`
-    CREATE INDEX IF NOT EXISTS "AiChat_userId_created_at_idx"
-    ON "AiChat"("userId", "created_at")
-  `;
-  aiChatTableReady = true;
-};
-
 const requireUser = (req, res) => {
   const userId = req.session?.userId;
   if (!userId) {
@@ -360,7 +336,6 @@ const normalizeReview = async (review) => {
 };
 
 const saveReviewChat = async ({ userId, review, summary, peerContext, fileName }) => {
-  await ensureAiChatTable();
   const title = `${summary.companyName || summary.ticker || "TCM"} AI Model Review`;
   const metadata = {
     type: "tcm-review",
@@ -400,7 +375,6 @@ router.get("/chats", async (req, res, next) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
-    await ensureAiChatTable();
 
     const rows = await prisma.$queryRaw`
       SELECT "id", "title", "companyName", "ticker", "review", "metadata", "created_at"
@@ -420,7 +394,6 @@ router.get("/chats/:id", async (req, res, next) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
-    await ensureAiChatTable();
 
     const chatId = parseInt(req.params.id);
     const rows = await prisma.$queryRaw`
@@ -441,7 +414,6 @@ router.delete("/chats/:id", async (req, res, next) => {
   try {
     const userId = requireUser(req, res);
     if (!userId) return;
-    await ensureAiChatTable();
 
     const chatId = parseInt(req.params.id);
     await prisma.$executeRaw`
