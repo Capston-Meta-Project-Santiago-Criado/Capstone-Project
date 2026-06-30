@@ -180,7 +180,14 @@ router.post("/canalyst-to-tcm", upload.single("canalystFile"), async (req, res, 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename=tcm-${parsed.ticker}.xlsx`);
     if (warnings.length > 0) {
-      res.setHeader("X-TCM-Warnings", JSON.stringify(warnings));
+      // HTTP headers must be Latin-1; escape any non-ASCII (em dash, smart
+      // quotes, degree sign, etc.) so the value stays valid JSON and Node
+      // doesn't reject the header.
+      const asciiSafeWarnings = JSON.stringify(warnings).replace(/[\s\S]/g, (ch) => {
+        const code = ch.charCodeAt(0);
+        return code > 127 ? "\\u" + code.toString(16).padStart(4, "0") : ch;
+      });
+      res.setHeader("X-TCM-Warnings", asciiSafeWarnings);
     }
     res.send(buffer);
   } catch (err) {
