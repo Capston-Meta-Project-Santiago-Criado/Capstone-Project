@@ -546,6 +546,39 @@ const CLUB_PITCHES = [
       "Xero (~5% SMB), Sage Intacct, NetSuite (mid-market); BILL, Melio (payments); ADP, Paychex, Gusto, Rippling (payroll); H&R Block, FreeTaxUSA (tax); Credit Karma vs NerdWallet, LendingTree, SoFi.",
     keyRisks: ["Competition / AI take TurboTax share", "SMB macro downturn (QuickBooks churn, Capital defaults, Credit Karma)", "Poor capital allocation (Mailchimp/Credit Karma history)"],
   },
+  {
+    company: "Sensient Technologies",
+    ticker: "SXT",
+    sector: "Specialty ingredients - colors, flavors & extracts",
+    pitchType: "Long",
+    analysts: ["Jonathan Hu", "Matthew Ottenbreit"],
+    thesis:
+      "Long: first-mover in natural colors ahead of a US demand inflection as state-level synthetic-dye bans force CPG companies to reformulate over the next ~3yrs. Consensus underestimates this (under-covered - only ~2 sell-side analysts, noisy competitor read-throughs, durability doubts). Underwrites a ~14% beat to '28E Adj. EPS as SXT converts ~65% of its US synthetics business at an ~8x dollar uplift (only ~1% end-customer price pass-through) plus volume-driven margin gains. Base: 2Y PT $147.37 (1.6x MOIC / 22.4% IRR).",
+    businessModel:
+      "Three units: Colors Group (40% rev / 60% EBIT; #1 in synthetic dye, #2 in natural ex-caramel), Flavors & Extracts (50% rev / 49% EBIT; dehydrated garlic/onion, essential oils), Asia Pacific (10% rev / 17% EBIT).",
+    modelingApproach:
+      "Conversion build: ~65% of the ~$110M US Food & Beverage synthetic-colors base converts to natural by '27E at an ~8x dollar uplift (~4x volume x ~2x price), with natural-colors revenue ~2.5x '25-'28E -> ~13.7% revenue CAGR; EBIT margin +130bps (mix shift to higher-margin Colors + operating leverage). US natural-color penetration ~33% -> ~75% by '27 (vs EU 85%+). Capitalize $5.90 '28E Adj. EPS at 24.0x (2.9x EV/Rev, 14.6x EV/EBITDA) -> $147.37. Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - US demand inflection underestimated: FDA phase-out + state bans (WV bans 6 dyes by Jan-2028, TX warning labels Jan-2027, >25 states pending) act as de-facto national bans since CPGs avoid duplicate SKUs; synthetic dye is only ~0.2% of CPG COGS, so an 8x uplift implies only ~1% price - 'manageable'.",
+      "TP2 - Durable first-mover advantage: #1 synthetic + #2 natural (ex-caramel) with a combined R&D/sales force for reformulation; ramped natural capacity in 2023 (competitors need 2+ yrs to build + 12-18mo to ramp); highly vertically integrated (gene-edited pigmentation, lower cost base); ~3pts share gain over 5yrs and accelerating.",
+    ],
+    cases: {
+      bear: "RFK Jr. firing / key legislation reversed, slower conversion or uplift, natural-color COGS inflation",
+      base: "65% US conversion at ~8x uplift, +130bps EBIT margin -> $5.90 '28E Adj. EPS at 24x -> $147.37 (1.6x MOIC / 22.4% IRR)",
+      bull: "Better-than-expected uplift multiples / conversion rates + more state bans accelerate CPG timelines",
+    },
+    keyDrivers: [
+      "US natural-color penetration (~33% -> ~75%)",
+      "Conversion rate (~65%) & dollar uplift (~8x)",
+      "Colors mix shift / EBIT margin (+130bps)",
+      "Share retention vs new natural-color entrants",
+      "Legislation timing (2027/2028 enforcement)",
+      "Exit P/E multiple (24x)",
+    ],
+    comps:
+      "Givaudan (GIVN) - largest natural-color player but caramel-heavy (SXT has no caramel exposure); other natural/synthetic color suppliers.",
+    keyRisks: ["RFK Jr. firing / legislation reversal", "Supply-chain disruption", "Natural-color COGS inflation"],
+  },
 ];
 
 const formatCard = (p) => {
