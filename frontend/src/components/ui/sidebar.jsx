@@ -243,6 +243,7 @@ function SidebarTrigger({ className, onClick, ...props }) {
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
+        event.currentTarget.blur();
       }}
       {...props}
     >

@@ -5,6 +5,11 @@ const ExcelJS = require("exceljs");
 const router = express.Router({ mergeParams: true });
 const finnhub = require("finnhub");
 const finnhubClient = new finnhub.DefaultApi(process.env.finnhubKey);
+const multer = require("multer");
+const { parseCanalyst } = require("../lib/canalystParser");
+const { generateTcmExcel } = require("../lib/tcmGenerator");
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const C = {
   titleBg: "FF0F172A", titleFg: "FFFFFFFF",
@@ -160,6 +165,27 @@ router.put("/generate-model-tcm/:id", async (req, res) => {
     res.setHeader("Content-Disposition", `attachment; filename=historicals-${company.ticker}.xlsx`);
     res.send(buffer);
   });
+});
+
+// POST /excel/canalyst-to-tcm
+// Accepts a Canalyst .xlsx upload, returns a TCM Historical Excel file
+router.post("/canalyst-to-tcm", upload.single("canalystFile"), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file uploaded. Include the file as multipart field 'canalystFile'." });
+    if (!req.file.originalname.endsWith(".xlsx")) return res.status(400).json({ error: "File must be a .xlsx Excel file." });
+
+    const parsed = parseCanalyst(req.file.buffer);
+    const { buffer, warnings } = await generateTcmExcel(parsed);
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename=tcm-${parsed.ticker}.xlsx`);
+    if (warnings.length > 0) {
+      res.setHeader("X-TCM-Warnings", JSON.stringify(warnings));
+    }
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

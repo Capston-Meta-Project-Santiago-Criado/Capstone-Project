@@ -395,22 +395,76 @@ router.get("/earnings", async (req, res) => {
 
 router.get("/earningsdata/:id", async (req, res) => {
   const portfolioId = parseInt(req.params.id);
-  const portfolio = await prisma.portfolio.findUnique({
-    where: {
-      id: portfolioId,
-    },
+  const portfolio = await prisma.portfolio.findUnique({ where: { id: portfolioId } });
+  if (!portfolio) return res.status(404).json([]);
+
+  const companies = await prisma.company.findMany({
+    where: { id: { in: portfolio.companiesIds } },
   });
 
-  const companyList = await prisma.company.findMany({
-    where: {
-      id: { in: portfolio.companiesIds },
-    },
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Refresh if any company has missing or past earnings
+  const needsRefresh = companies.some((c) => {
+    if (!c.UpcomingEarnings?.length) return true;
+    return new Date(c.UpcomingEarnings[0]) < today;
   });
-  const earningsList = companyList.filter(
-    (value) =>
-      value.UpcomingEarnings != null && value.UpcomingEarnings.length != 0
-  );
-  res.json(earningsList);
+
+  if (needsRefresh) {
+    try {
+      const nextDate = new Date(today);
+      nextDate.setDate(nextDate.getDate() + 60);
+      const calData = await new Promise((resolve, reject) =>
+        finnhubClient.earningsCalendar(
+          { from: formatDate(today), to: formatDate(nextDate) },
+          (err, data) => (err ? reject(err) : resolve(data))
+        )
+      );
+      const tickerSet = new Set(companies.map((c) => c.ticker));
+      await Promise.all(
+        (calData.earningsCalendar ?? [])
+          .filter((e) => tickerSet.has(e.symbol))
+          .map((e) =>
+            prisma.company.update({
+              where: { ticker: e.symbol },
+              data: {
+                UpcomingEarnings: [
+                  e.date,
+                  String(e.epsActual ?? ""),
+                  String(e.epsEstimate ?? ""),
+                  String(e.revenueActual ?? ""),
+                  String(e.revenueEstimate ?? ""),
+                  e.symbol,
+                ],
+              },
+            })
+          )
+      );
+      // Re-read after update
+      const refreshed = await prisma.company.findMany({
+        where: { id: { in: portfolio.companiesIds } },
+      });
+      return res.json(toEarningsShape(refreshed, today));
+    } catch {
+      // Fall through to cached data on Finnhub error
+    }
+  }
+
+  res.json(toEarningsShape(companies, today));
 });
+
+function toEarningsShape(companies, today) {
+  return companies
+    .filter((c) => c.UpcomingEarnings?.length && new Date(c.UpcomingEarnings[0]) >= today)
+    .map((c) => ({
+      companyId:       c.id,
+      ticker:          c.ticker,
+      name:            c.name,
+      earningsDate:    c.UpcomingEarnings[0],
+      epsEstimate:     c.UpcomingEarnings[2] || null,
+      revenueEstimate: c.UpcomingEarnings[4] || null,
+    }));
+}
 
 module.exports = router;

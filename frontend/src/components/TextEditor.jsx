@@ -19,9 +19,11 @@ const TextEditor = ({ viewerPermissions }) => {
     ],
   };
   const { id } = useParams();
-  const [value, setValue] = useState("");
+  const quillRef = useRef(null);
+  const [displayValue, setDisplayValue] = useState(""); // read-only display only
   const [saveStatus, setSaveStatus] = useState("saved"); // "saved" | "unsaved" | "saving"
   const saveTimer = useRef(null);
+  const isLoadingRef = useRef(false);
   const canEdit = viewerPermissions === EDITOR_PERMS;
 
   useEffect(() => {
@@ -30,7 +32,16 @@ const TextEditor = ({ viewerPermissions }) => {
         method: "GET",
         credentials: "include",
       });
-      setValue(await response.json());
+      const html = (await response.json()) || "";
+      setDisplayValue(html);
+      // Set Quill content imperatively (uncontrolled — no value prop re-renders)
+      if (quillRef.current) {
+        const editor = quillRef.current.getEditor();
+        isLoadingRef.current = true;
+        editor.clipboard.dangerouslyPasteHTML(html);
+        isLoadingRef.current = false;
+        editor.setSelection(0, 0);
+      }
     };
     getCurrentDoc();
   }, [id]);
@@ -50,14 +61,15 @@ const TextEditor = ({ viewerPermissions }) => {
   };
 
   const handleChange = (content, delta, source, editor) => {
+    // Ignore programmatic changes (initial load via dangerouslyPasteHTML)
+    if (isLoadingRef.current || source !== "user") return;
     const html = editor.getHTML();
-    setValue(html);
     setSaveStatus("unsaved");
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => doSave(html), AUTOSAVE_DELAY);
   };
 
-  const isEmpty = !value || value === "<p><br></p>" || value === "";
+  const isEmpty = !displayValue || displayValue === "<p><br></p>" || displayValue === "";
 
   return (
     <div className="bg-[#0f0f14] border border-white/8 rounded-xl overflow-hidden">
@@ -99,8 +111,8 @@ const TextEditor = ({ viewerPermissions }) => {
       {canEdit ? (
         <div className="[&_.ql-toolbar]:bg-[#13131a] [&_.ql-toolbar]:border-0 [&_.ql-toolbar]:border-b [&_.ql-toolbar]:border-white/8 [&_.ql-toolbar]:px-4 [&_.ql-toolbar]:py-2 [&_.ql-container]:border-0 [&_.ql-container]:bg-[#0f0f14] [&_.ql-editor]:text-gray-200 [&_.ql-editor]:text-sm [&_.ql-editor]:leading-relaxed [&_.ql-editor]:min-h-56 [&_.ql-editor]:p-5 [&_.ql-stroke]:stroke-gray-400 [&_.ql-fill]:fill-gray-400 [&_.ql-picker-label]:text-gray-400 [&_.ql-editor.ql-blank::before]:text-gray-600 [&_.ql-editor.ql-blank::before]:not-italic [&_.ql-editor]:focus:outline-none [&_.ql-editor_blockquote]:border-l-2 [&_.ql-editor_blockquote]:border-emerald-500/50 [&_.ql-editor_blockquote]:pl-4 [&_.ql-editor_blockquote]:text-gray-400 [&_.ql-editor_ol]:pl-4 [&_.ql-editor_ul]:pl-4 [&_.ql-formats]:mr-2">
           <ReactQuill
+            ref={quillRef}
             theme="snow"
-            value={value}
             onChange={handleChange}
             modules={modules}
             placeholder="Add notes about this portfolio — investment thesis, reminders, research…"
@@ -113,7 +125,7 @@ const TextEditor = ({ viewerPermissions }) => {
           ) : (
             <div
               className="prose prose-invert prose-sm max-w-none text-gray-300 leading-relaxed [&_strong]:text-white [&_em]:text-gray-300 [&_ul]:pl-4 [&_ol]:pl-4 [&_li]:my-0.5 [&_blockquote]:border-l-2 [&_blockquote]:border-emerald-500/50 [&_blockquote]:pl-4 [&_blockquote]:text-gray-400"
-              dangerouslySetInnerHTML={{ __html: value }}
+              dangerouslySetInnerHTML={{ __html: displayValue }}
             />
           )}
         </div>

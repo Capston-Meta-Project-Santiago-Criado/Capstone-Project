@@ -1,6 +1,6 @@
 // mostly shadcn library, boilerplate code from https://ui.shadcn.com/docs/components/sidebar, own formatting
 
-import { Home, Inbox, Settings, BookText } from "lucide-react";
+import { Home, Inbox, Settings, BookText, FileSpreadsheet, MessagesSquare } from "lucide-react";
 import { UserInfo } from "../context/UserContext";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -17,10 +17,15 @@ import {
   SidebarMenuItem,
 } from "./ui/sidebar";
 
+const TCM_TITLE = "TCM Generator";
+const AI_CHATS_TITLE = "AI Chats";
+
 const items = [
   { title: "Home", url: "/home", icon: Home },
   { title: INBOX_TITLE, url: "/inbox", icon: Inbox },
   { title: PORTFOLIO_TITLE, url: "/portfolios", icon: BookText },
+  { title: TCM_TITLE, url: "/canalyst", icon: FileSpreadsheet },
+  { title: AI_CHATS_TITLE, url: "/ai-chats", icon: MessagesSquare },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -37,7 +42,7 @@ const AppSidebar = ({ numberOfNotifications }) => {
             <SidebarMenu className="space-y-1">
               {items.map((item) => {
                 if (
-                  (item.title === INBOX_TITLE || item.title === PORTFOLIO_TITLE) &&
+                  (item.title === INBOX_TITLE || item.title === PORTFOLIO_TITLE || item.title === TCM_TITLE || item.title === AI_CHATS_TITLE) &&
                   isGuest === true
                 ) return null;
 
@@ -46,7 +51,7 @@ const AppSidebar = ({ numberOfNotifications }) => {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
-                      onClick={() => navigate(item.url)}
+                      onClick={(e) => { e.currentTarget.blur(); navigate(item.url); }}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
                         isActive
                           ? "!bg-white/10 !text-white border border-white/20"

@@ -131,6 +131,7 @@ const modelRoutes = require("./routes/model");
 const recommendationRoutes = require("./routes/recommendations");
 const notificationsRoutes = require("./routes/notifications");
 const excelRoutes = require("./routes/excel");
+const aiRoutes = require("./routes/ai");
 app.use("/models", modelRoutes);
 app.use("/getters", getterRoutes);
 app.use("/auth", authRoutes);
@@ -140,6 +141,7 @@ app.use("/company", companyRoutes);
 app.use("/recommendations", recommendationRoutes);
 app.use("/notifications", notificationsRoutes);
 app.use("/excel", excelRoutes);
+app.use("/ai", aiRoutes);
 
 // Global error handler — always return JSON, never HTML
 app.use((err, req, res, next) => {

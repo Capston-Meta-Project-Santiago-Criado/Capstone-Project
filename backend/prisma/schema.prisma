@@ -55,6 +55,7 @@ model Company {
     cachedExplore   Int[] @default([])
     lastCached      DateTime @default(now())
     notificantions  Notification[]
+    aiChats         AiChat[]
     unreadNotifications Int  @default(0)
   } 
 
@@ -118,4 +119,16 @@ model Notification {
   user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId   Int
   created_at DateTime @default(now())
+}
+
+model AiChat {
+  id          Int      @id @default(autoincrement())
+  title       String
+  companyName String?
+  ticker      String?
+  review      Json
+  metadata    Json?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  created_at  DateTime @default(now())
 }

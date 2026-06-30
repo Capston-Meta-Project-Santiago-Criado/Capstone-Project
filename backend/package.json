@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.107.0",
     "@prisma/client": "^6.10.0",
     "@quixo3/prisma-session-store": "^3.1.13",
     "@tensorflow/tfjs": "^4.22.0",
@@ -18,6 +19,7 @@
     "multer": "^2.0.2",
     "socket.io": "^4.8.1",
     "ws": "^8.18.3",
+    "xlsx": "^0.18.5",
     "yahoo-finance2": "^2.11.3"
   },
   "name": "backend",
@@ -32,7 +34,7 @@
     "prisma": "^6.10.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/"
   },
   "keywords": [],
   "author": "",

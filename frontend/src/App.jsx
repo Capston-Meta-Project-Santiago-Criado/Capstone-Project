@@ -14,6 +14,8 @@ import AppSidebar from "./components/AppSidebar";
 import SearchBar from "./components/SearchBar";
 import { useNavigate } from "react-router-dom";
 import Settings from "./Settings";
+import CanalystConverter from "./CanalystConverter";
+import AiChats from "./AiChats";
 import { socket } from "./socket";
 import { useEffect } from "react";
 import { BASE_URL } from "./lib/utils";
@@ -145,6 +147,22 @@ const App = () => {
             element={
               <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
                 <Settings />
+              </LoggedInPage>
+            }
+          />
+          <Route
+            path="/canalyst"
+            element={
+              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
+                <CanalystConverter />
+              </LoggedInPage>
+            }
+          />
+          <Route
+            path="/ai-chats"
+            element={
+              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
+                <AiChats />
               </LoggedInPage>
             }
           />

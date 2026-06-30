@@ -1,39 +1,29 @@
 import PortfolioCard from "./PortfolioCard";
 import { BASE_URL } from "../lib/utils";
 import { useEffect, useState } from "react";
+import { getCached, cachedFetch } from "../lib/apiCache";
 
-// Module-level cache survives route changes — navigating away and back is instant
-let _cache = null;
-let _cacheTime = 0;
-const CACHE_TTL = 60_000; // 1 minute
+const CACHE_KEY = "home:public-portfolios";
+const CACHE_TTL = 5 * 60_000; // 5 minutes
 
 const PublicPortfolios = () => {
-  const [portfolios, setPortfolios] = useState(_cache); // show cached immediately if available
+  const [portfolios, setPortfolios] = useState(() => getCached(CACHE_KEY));
 
   useEffect(() => {
-    const fetchPortfolios = async () => {
-      try {
-        const response = await fetch(
-          `${BASE_URL}/recommendations/curated-portfolios/public`,
-          { method: "GET", credentials: "include" }
-        );
-        if (!response.ok) return;
-        const data = await response.json();
-        _cache = data;
-        _cacheTime = Date.now();
-        setPortfolios(data);
-      } catch {}
-    };
-
-    const isStale = Date.now() - _cacheTime > CACHE_TTL;
-    if (isStale) {
-      // No fresh cache — fetch and show spinner until done
-      fetchPortfolios();
-    } else {
-      // Cache is fresh — show it immediately, still refresh silently in background
-      setPortfolios(_cache);
-      fetchPortfolios();
-    }
+    cachedFetch(
+      CACHE_KEY,
+      async () => {
+        const res = await fetch(`${BASE_URL}/recommendations/curated-portfolios/public`, {
+          method: "GET",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("failed");
+        return res.json();
+      },
+      CACHE_TTL
+    )
+      .then(setPortfolios)
+      .catch(() => {});
   }, []);
 
   if (portfolios === null) {

@@ -9,8 +9,12 @@ require("dotenv").config();
 
 const { isMarketOpen } = require("../lib/utils");
 
+const finnhub = require("finnhub");
+const finnhubClient = new finnhub.DefaultApi(process.env.finnhubKey);
+
 const POLYGON_KEY = process.env.POLYGON_KEY;
 const QUOTE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes during market hours
+const DB_STALE_THRESHOLD = 2 * 24 * 60 * 60 * 1000; // treat DB price as stale after 2 days
 const quoteCache = new Map(); // ticker -> { data, fetchedAt }
 
 // Fetch snapshots for multiple tickers in one Polygon API call
@@ -32,6 +36,7 @@ const fetchPolygonSnapshots = async (tickers) => {
         symbol: t.ticker,
         regularMarketPrice: t.day?.c ?? t.lastTrade?.p ?? 0,
         regularMarketPreviousClose: t.prevDay?.c ?? 0,
+        todaysChangePerc: t.todaysChangePerc ?? 0,
         averageAnalystRating: null,
       },
     ])
@@ -130,7 +135,7 @@ router.get("/manycompanies", async (req, res) => {
     if (!raw) return res.json([]);
     const tickerArr = Array.isArray(raw) ? raw : [raw];
 
-    // When markets are closed serve from DB — no point hitting Yahoo Finance
+    // When markets are closed serve from DB — skip Polygon if prices are fresh
     if (!isMarketOpen()) {
       const companies = await prisma.company.findMany({
         where: { ticker: { in: tickerArr } },
@@ -138,7 +143,8 @@ router.get("/manycompanies", async (req, res) => {
       const byTicker = Object.fromEntries(companies.map((c) => [c.ticker, c]));
       const prices = tickerArr.map((ticker) => {
         const c = byTicker[ticker];
-        if (c && c.daily_price > 0) {
+        const age = c?.lastUpdate ? Date.now() - new Date(c.lastUpdate).getTime() : Infinity;
+        if (c && c.daily_price > 0 && age < DB_STALE_THRESHOLD) {
           const prevClose = c.daily_price_change !== 0
             ? c.daily_price / (1 + c.daily_price_change / 100)
             : c.daily_price;
@@ -149,22 +155,32 @@ router.get("/manycompanies", async (req, res) => {
             averageAnalystRating: null,
           };
         }
-        // DB has no price — fall through to Yahoo below
+        // DB missing or stale — fall through to Polygon
         return null;
       });
 
-      // If all tickers resolved from DB, return immediately
+      // If all tickers resolved from fresh DB, return immediately
       if (prices.every(Boolean)) return res.json(prices);
     }
 
-    // Markets open (or DB missing data): fetch all quotes concurrently
-    // Batch snapshot: one Polygon call for all tickers at once
+    // Markets open (or DB stale): batch Polygon call for all tickers at once
     const snapshots = await fetchPolygonSnapshots(tickerArr);
     const prices = tickerArr.map((ticker) => {
       const result = snapshots[ticker] ?? { symbol: ticker, regularMarketPrice: 0, regularMarketPreviousClose: 0 };
       quoteCache.set(ticker, { data: result, fetchedAt: Date.now() });
       return result;
     });
+    // Write back to DB so the next request (or after restart) skips Polygon
+    Promise.all(
+      prices
+        .filter((p) => p.regularMarketPrice > 0)
+        .map((p) =>
+          prisma.company.updateMany({
+            where: { ticker: p.symbol },
+            data: { daily_price: p.regularMarketPrice, daily_price_change: p.todaysChangePerc ?? 0, lastUpdate: new Date() },
+          })
+        )
+    ).catch(() => {});
     res.json(prices);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -181,10 +197,10 @@ router.get("/stats/:companyTick", async (req, res) => {
     const company = await prisma.company.findFirst({ where: { ticker } });
 
     // Fresh DB cache — use it without hitting any external API
-    // When markets are closed, DB price is always valid (prices won't change)
     if (company && company.daily_price > 0 && company.lastUpdate) {
       const age = Date.now() - new Date(company.lastUpdate).getTime();
-      if (!isMarketOpen() || age < DB_PRICE_TTL) {
+      const isFresh = age < DB_STALE_THRESHOLD && (!isMarketOpen() || age < DB_PRICE_TTL);
+      if (isFresh) {
         const prevClose = company.daily_price_change !== 0
           ? company.daily_price / (1 + company.daily_price_change / 100)
           : company.daily_price;
@@ -197,9 +213,17 @@ router.get("/stats/:companyTick", async (req, res) => {
       }
     }
 
-    // Try live Yahoo Finance
+    // DB is missing or stale — fetch live from Polygon and write back to DB
     const live = await getPolygonQuote(ticker);
     if (live.regularMarketPrice > 0) {
+      prisma.company.updateMany({
+        where: { ticker },
+        data: {
+          daily_price: live.regularMarketPrice,
+          daily_price_change: live.todaysChangePerc ?? 0,
+          lastUpdate: new Date(),
+        },
+      }).catch(() => {});
       return res.status(200).json(live);
     }
 

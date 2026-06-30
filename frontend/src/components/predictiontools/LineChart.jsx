@@ -32,32 +32,29 @@ const LineChart = ({
   portfolioName,
   historicalData,
   predictionData,
-  predictedShifts,
+  pastEarnings,
   isLoading,
 }) => {
-  const buildShifts = (dates) => {
-    const annotations = {};
-    dates.forEach((val, i) => {
-      annotations[`line${i}`] = {
-        type: "line",
-        scaleID: "x",
-        value: val.date,
-        borderColor: "rgba(251,191,36,0.8)",
-        borderWidth: 1.5,
-        borderDash: [4, 4],
-        label: {
-          display: true,
-          content: `${val.name} earnings`,
-          position: "start",
-          padding: 4,
-          color: "rgba(251,191,36,1)",
-          backgroundColor: "rgba(251,191,36,0.12)",
-          font: { size: 10 },
-        },
-      };
-    });
-    return annotations;
-  };
+  const earningsAnnotations = {};
+  (pastEarnings ?? []).forEach((e, i) => {
+    earningsAnnotations[`earn${i}`] = {
+      type: "line",
+      scaleID: "x",
+      value: e.earningsDate,
+      borderColor: "rgba(251,191,36,0.5)",
+      borderWidth: 1,
+      borderDash: [3, 3],
+      label: {
+        display: true,
+        content: e.ticker,
+        position: "start",
+        padding: { x: 3, y: 2 },
+        color: "rgba(251,191,36,0.85)",
+        backgroundColor: "rgba(251,191,36,0.08)",
+        font: { size: 9 },
+      },
+    };
+  });
 
   const datasets = [];
 
@@ -136,9 +133,7 @@ const LineChart = ({
             })}`,
         },
       },
-      annotation: {
-        annotations: buildShifts(predictedShifts ?? []),
-      },
+      annotation: { annotations: earningsAnnotations },
     },
     scales: {
       x: {

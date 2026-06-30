@@ -59,8 +59,7 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
   const [predictedBalance, setPredictedBalance] = useState(null);
   const [isModelExists, setIsModelExists] = useState(false);
   const [isCachedPredictionsClicked, setIsCachedPredictionsClicked] = useState(false);
-  const [predictedShifts, setPredictedShifts] = useState([]);
-  const [noEarningsUpcoming, setNoEarningsUpcoming] = useState(false);
+  const [earningsData, setEarningsData] = useState([]);
   const [timeFrame, setTimeFrame] = useState("Month");
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState(null); // null | { pct, epoch, total }
@@ -92,21 +91,16 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
     setIsHistoryLoading(false);
   };
 
-  const getPredictedShifts = async () => {
-    const response = await fetch(`${BASE_URL}/models/earningsdata/${portfolioData.id}`, {
-      method: "GET",
-      credentials: "include",
-    });
-    const data = await response.json();
-    if (data != null && data.length !== 0) {
-      setPredictedShifts(data.map((value) => ({
-        date: value.UpcomingEarnings[0],
-        name: value.name,
-        description: "earnings release",
-      })));
-      return;
-    }
-    setNoEarningsUpcoming(true);
+  const fetchEarnings = async (portfolioId) => {
+    try {
+      const res = await fetch(`${BASE_URL}/models/earningsdata/${portfolioId}`, {
+        method: "GET",
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setEarningsData(data ?? []);
+    } catch {}
   };
 
   async function getModel(isNewModel) {
@@ -186,6 +180,14 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
     }
   }, [portfolioData?.id, timeFrame, companiesData?.length]);
 
+  // Auto-fetch earnings whenever the portfolio changes
+  useEffect(() => {
+    if (portfolioData?.id && companiesData?.length > 0) {
+      setEarningsData([]);
+      fetchEarnings(portfolioData.id);
+    }
+  }, [portfolioData?.id, companiesData?.length]);
+
   // Compute portfolio stats from available data
   const stats = (() => {
     if (!companiesData || !companiesStockData || !portfolioData) return null;
@@ -260,17 +262,6 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
                 >
                   Run Predictions
                 </button>
-              )}
-              {predictionData != null && !noEarningsUpcoming && (
-                <button
-                  className="px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 text-xs font-semibold transition-all duration-200 text-left w-full"
-                  onClick={getPredictedShifts}
-                >
-                  Predict Shifts
-                </button>
-              )}
-              {noEarningsUpcoming && (
-                <p className="text-xs text-gray-500">No shift data available</p>
               )}
               {!predictionsClicked && !isGuest && <NewModelButton getModel={getModel} />}
               {predictionsClicked && (
@@ -352,6 +343,43 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
                   </div>
                 </div>
 
+                {/* Upcoming Earnings */}
+                {(() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const upcoming = [...earningsData]
+                    .filter((e) => new Date(e.earningsDate + "T00:00:00") >= today)
+                    .sort((a, b) => new Date(a.earningsDate) - new Date(b.earningsDate));
+                  if (!upcoming.length) return null;
+                  return (
+                    <div className="pt-3 border-t border-white/8">
+                      <p className="text-xs text-gray-500 uppercase font-mono tracking-wider mb-2">Upcoming Earnings</p>
+                      <div className="flex flex-col gap-1.5 overflow-y-auto" style={{ maxHeight: "7.5rem" }}>
+                        {upcoming.map((e) => {
+                          const date = new Date(e.earningsDate + "T00:00:00");
+                          const daysAway = Math.round((date - today) / 86400000);
+                          const isToday = daysAway === 0;
+                          const isSoon = daysAway <= 14;
+                          return (
+                            <div key={e.ticker} className="flex justify-between items-center gap-2 shrink-0">
+                              <span className="text-xs font-mono text-gray-200">{e.ticker}</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-xs font-semibold whitespace-nowrap ${isToday ? "text-emerald-400" : isSoon ? "text-amber-400" : "text-gray-300"}`}>
+                                  {date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                </span>
+                                {isToday
+                                  ? <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-1 rounded leading-tight">today</span>
+                                  : <span className={`text-[10px] ${isSoon ? "text-amber-500" : "text-gray-500"}`}>{daysAway}d</span>
+                                }
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Sector breakdown */}
                 {stats.sectors.length > 0 && (
                   <div className="pt-3 border-t border-white/8">
@@ -392,7 +420,15 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
               portfolioName={portfolioData.name}
               historicalData={historicalData}
               predictionData={predictionData}
-              predictedShifts={predictedShifts}
+              pastEarnings={(() => {
+                if (!historicalData?.length || !earningsData.length) return [];
+                const today = new Date().toISOString().slice(0, 10);
+                const chartStart = historicalData[0].date;
+                const chartEnd = historicalData[historicalData.length - 1].date;
+                return earningsData.filter(
+                  (e) => e.earningsDate < today && e.earningsDate >= chartStart && e.earningsDate <= chartEnd
+                );
+              })()}
               isLoading={isHistoryLoading}
             />
           </div>
