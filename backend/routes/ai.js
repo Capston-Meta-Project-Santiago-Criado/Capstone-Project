@@ -3,6 +3,7 @@ const multer = require("multer");
 const Anthropic = require("@anthropic-ai/sdk");
 const { PrismaClient } = require("../generated/prisma");
 const { parseCanalyst } = require("../lib/canalystParser");
+const { buildClubReference } = require("../lib/clubPitchLibrary");
 
 const router = express.Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -445,6 +446,9 @@ router.post("/tcm-review", upload.single("canalystFile"), async (req, res, next)
       max_tokens: 2200,
       temperature: 0.45,
       system: [
+        {
+          type: "text",
+          text: [
         "You are an investment banking modeling assistant reviewing parsed historical financials.",
         "Do not give buy, sell, hold, or price-target advice.",
         "Do not invent unavailable facts. If a metric is missing, say the data is not available.",
@@ -460,8 +464,17 @@ router.post("/tcm-review", upload.single("canalystFile"), async (req, res, next)
         "For nextSteps, write 3-5 action-oriented steps, not generic commentary.",
         "For diligenceQuestions, include 3-5 questions an analyst should answer before relying on the model.",
         "For assumptionsToSensitize, include 3-5 specific assumptions.",
+        "Club house style: every pitch frames three scenarios - Bear, Base, and Bull. Reflect this in assumptionsToSensitize and scenario guidance; comparable companies are optional.",
+        "A library of the club's own prior pitches follows. Match the club's house style and modeling approach, and reference a relevant prior pitch by name when the company under review is analogous.",
         "Use the return_tcm_review tool to provide the final structured review.",
-      ].join(" "),
+          ].join(" "),
+        },
+        {
+          type: "text",
+          text: buildClubReference(),
+          cache_control: { type: "ephemeral" },
+        },
+      ],
       tools: [
         {
           name: "return_tcm_review",
