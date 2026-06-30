@@ -443,7 +443,7 @@ router.post("/tcm-review", upload.single("canalystFile"), async (req, res, next)
 
     const response = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2200,
+      max_tokens: 4096,
       temperature: 0.45,
       system: [
         {
