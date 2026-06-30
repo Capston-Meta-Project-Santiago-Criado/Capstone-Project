@@ -8,7 +8,7 @@ const router = express.Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const prisma = new PrismaClient();
 
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5";
+const MODEL = (process.env.ANTHROPIC_MODEL || "claude-haiku-4-5").trim();
 
 const requireUser = (req, res) => {
   const userId = req.session?.userId;
