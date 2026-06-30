@@ -1,9 +1,10 @@
 import { BASE_URL } from "./lib/utils";
+import { cachedFetch } from "./lib/apiCache";
 import { useState, useEffect } from "react";
 import TradingViewWidget from "./components/TradingViewWidget";
 import NewsList from "./components/NewsList";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { AlertCircle, Building2, ChevronDown, ChevronUp, FileSpreadsheet, Loader2, Newspaper, Plus, RefreshCw, Sparkles } from "lucide-react";
 import { UserInfo } from "./context/UserContext";
 import ExcelTools from "./components/ExcelTools";
 import cn from "classnames";
@@ -126,10 +127,102 @@ const AddToPortfolio = ({ companyId }) => {
   );
 };
 
+const AiBusinessSummary = ({ companyId }) => {
+  const [state, setState] = useState({ status: "loading", summary: null, error: "" });
+
+  const load = (revalidate = false) => {
+    setState((s) => ({ status: s.summary ? s.status : "loading", summary: s.summary, error: "" }));
+    cachedFetch(
+      `ai-summary:${companyId}`,
+      async () => {
+        const res = await fetch(`${BASE_URL}/ai/company-summary/${companyId}`, { credentials: "include" });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e.error || "Could not load summary");
+        }
+        return res.json();
+      },
+      24 * 60 * 60 * 1000,
+      revalidate ? { revalidate: true } : {},
+    )
+      .then((data) => setState({ status: "done", summary: data?.summary || null, error: "" }))
+      .catch((err) => setState((s) => ({ status: "error", summary: s.summary, error: err.message || "Could not load summary" })));
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
+
+  const summary = state.summary;
+  const sourceLabel =
+    summary?.source === "10-K"
+      ? `From 10-K${summary.filedDate ? ` (filed ${new Date(summary.filedDate).toLocaleDateString()})` : ""}`
+      : summary
+        ? "From general knowledge"
+        : "";
+
+  return (
+    <section className="mt-6 bg-[#0f0f14] border border-white/8 rounded-xl p-5">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-emerald-400" />
+          <h2 className="text-sm font-mono uppercase tracking-wider text-gray-400">AI Business Summary</h2>
+        </div>
+        {sourceLabel && <span className="text-[11px] uppercase tracking-wider text-gray-600">{sourceLabel}</span>}
+      </div>
+
+      {state.status === "loading" && !summary && (
+        <div className="flex items-center gap-3 text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+          <p className="text-sm">Analyzing the latest 10-K… this can take a few seconds the first time.</p>
+        </div>
+      )}
+
+      {state.status === "error" && !summary && (
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-gray-400">{state.error || "Could not generate a summary."}</p>
+          <button
+            onClick={() => load(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-gray-300 border border-white/10 hover:bg-white/8 text-xs font-semibold"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
+
+      {summary && (
+        <div>
+          <p className="text-sm text-gray-300 leading-relaxed">{summary.overview}</p>
+          {Array.isArray(summary.segments) && summary.segments.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-mono uppercase tracking-wider text-gray-500 mb-2">Revenue breakdown</p>
+              <ul className="space-y-1.5">
+                {summary.segments.map((s, i) => (
+                  <li key={`${s.name}-${i}`} className="flex items-baseline justify-between gap-3 text-sm">
+                    <span className="text-gray-300">
+                      {s.name}
+                      {s.note ? <span className="text-gray-500"> — {s.note}</span> : null}
+                    </span>
+                    {s.revenuePct != null && <span className="font-mono text-emerald-400 shrink-0">{s.revenuePct}%</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {summary.sourceNote && <p className="mt-3 text-[11px] text-gray-600">{summary.sourceNote}</p>}
+        </div>
+      )}
+    </section>
+  );
+};
+
 const CompanyInfo = () => {
   const [info, setInfo] = useState(null);
   const [stockData, setStockData] = useState(null);
   const [newsData, setNewsData] = useState(null);
+  const [newsStatus, setNewsStatus] = useState("idle");
+  const [newsError, setNewsError] = useState("");
   const [logoUrl, setLogoUrl] = useState(null);
   const { selectedId } = useParams();
   const [isDetailRevealed, setIsDetailRevealed] = useState(false);
@@ -143,31 +236,79 @@ const CompanyInfo = () => {
     });
   };
 
-  useEffect(() => {
-    const getAll = async () => {
-      const response = await fetch(`${BASE_URL}/getters/companyById/${selectedId}`, {
+  const fetchCompanyNews = async (signal) => {
+    setNewsStatus("loading");
+    setNewsError("");
+    try {
+      const response = await fetch(`${BASE_URL}/getters/news/${selectedId}`, {
         credentials: "include",
+        signal,
       });
-      const data = await response.json();
-      setInfo(data);
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "Could not load news" }));
+        throw new Error(err.error ?? err.message ?? "Could not load news");
+      }
+      const news = await response.json();
+      setNewsData(Array.isArray(news) ? news : []);
+      setNewsStatus("done");
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setNewsData([]);
+      setNewsError(err.message || "Could not load news");
+      setNewsStatus("error");
+    }
+  };
 
-      const [stockRes, logoRes, newsRes] = await Promise.all([
-        fetch(`${BASE_URL}/getters/stats/${data.ticker}`, { credentials: "include" }),
-        fetch(`${BASE_URL}/getters/logo/${data.ticker}`, { credentials: "include" }),
-        fetch(`${BASE_URL}/getters/news/${selectedId}`, { credentials: "include" }),
-      ]);
+  useEffect(() => {
+    const controller = new AbortController();
+    let cancelled = false;
+    const getAll = async () => {
+      setInfo(null);
+      setStockData(null);
+      setLogoUrl(null);
+      setNewsData(null);
+      setNewsStatus("loading");
+      setNewsError("");
 
-      const stock = await stockRes.json();
-      setStockData(stock);
+      try {
+        const response = await fetch(`${BASE_URL}/getters/companyById/${selectedId}`, {
+          credentials: "include",
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("Could not load company");
+        const data = await response.json();
+        if (cancelled) return;
+        setInfo(data);
+        fetchCompanyNews(controller.signal);
 
-      const logo = await logoRes.json();
-      setLogoUrl(logo.logo);
+        const [stockRes, logoRes] = await Promise.all([
+          fetch(`${BASE_URL}/getters/stats/${data.ticker}`, { credentials: "include", signal: controller.signal }),
+          fetch(`${BASE_URL}/getters/logo/${data.ticker}`, { credentials: "include", signal: controller.signal }),
+        ]);
 
-      const news = await newsRes.json();
-      setNewsData(news);
-      addToHistory();
+        if (stockRes.ok) {
+          const stock = await stockRes.json();
+          if (!cancelled) setStockData(stock);
+        }
+
+        if (logoRes.ok) {
+          const logo = await logoRes.json();
+          if (!cancelled) setLogoUrl(logo.logo);
+        }
+
+        if (!cancelled) addToHistory();
+      } catch (err) {
+        if (err.name === "AbortError") return;
+        setNewsData([]);
+        setNewsStatus("error");
+        setNewsError("Could not load company news.");
+      }
     };
     getAll();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
   }, [selectedId]);
 
   const isPositive =
@@ -182,6 +323,21 @@ const CompanyInfo = () => {
           100
         ).toFixed(2)
       : null;
+
+  const previousClose = stockData?.regularMarketPreviousClose ?? null;
+  const rawPriceChange =
+    stockData && previousClose != null
+      ? stockData.regularMarketPrice - previousClose
+      : null;
+  const priceChange = Number.isFinite(rawPriceChange) ? rawPriceChange : null;
+  const lastUpdated = info?.lastUpdate
+    ? new Date(info.lastUpdate).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <main className="w-full min-h-screen px-6 pb-12">
@@ -246,32 +402,95 @@ const CompanyInfo = () => {
       {/* Chart */}
       {info && <div className="mt-6"><TradingViewWidget key={info.ticker} info={info} /></div>}
 
-      {/* Description */}
-      {info?.description && (
-        <div className="mt-6">
-          <button
-            className="flex items-center gap-2 text-sm font-semibold text-gray-400 hover:text-white transition-colors duration-200 mb-3"
-            onClick={() => setIsDetailRevealed((v) => !v)}
-          >
-            {isDetailRevealed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            {isDetailRevealed ? "Hide" : "Show"} Company Overview
-          </button>
-          {isDetailRevealed && (
-            <div className="bg-[#0f0f14] border border-white/8 rounded-xl p-5 text-gray-300 text-sm leading-relaxed">
-              {info.description}
-            </div>
-          )}
-        </div>
-      )}
+      {/* AI business summary */}
+      {info && <AiBusinessSummary companyId={info.id} />}
 
-      {/* Excel Tools */}
-      {!isGuest && info && (
-        <div className="mt-4">
-          <ExcelTools companyId={info.id} />
+      {info && (
+        <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-5">
+          <section className="bg-[#0f0f14] border border-white/8 rounded-xl p-5">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-mono uppercase tracking-wider text-gray-400">Company Overview</h2>
+              </div>
+              {info.description && (
+                <button
+                  className="flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-white transition-colors duration-200"
+                  onClick={() => setIsDetailRevealed((v) => !v)}
+                >
+                  {isDetailRevealed ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  {isDetailRevealed ? "Less" : "More"}
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {info.description
+                ? isDetailRevealed
+                  ? info.description
+                  : `${info.description.slice(0, 420)}${info.description.length > 420 ? "..." : ""}`
+                : "No company description is available yet."}
+            </p>
+          </section>
+
+          <aside className="bg-[#0f0f14] border border-white/8 rounded-xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/8">
+              <p className="text-sm font-bold text-white">Snapshot</p>
+              <p className="text-xs text-gray-500 mt-0.5">Profile and quote context</p>
+            </div>
+            <div className="grid grid-cols-2 gap-px bg-white/8">
+              {[
+                ["Sector", info.industry?.sector?.name ?? "Unknown"],
+                ["Industry", info.industry?.name ?? "Unknown"],
+                ["Previous Close", previousClose != null ? `$${previousClose.toFixed(2)}` : "N/A"],
+                ["Day Move", priceChange != null && dailyChangePct != null ? `${priceChange >= 0 ? "+" : ""}$${priceChange.toFixed(2)} (${dailyChangePct}%)` : "N/A"],
+                ["Ticker", info.ticker],
+                ["Updated", lastUpdated ?? "N/A"],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-[#0f0f14] p-4 min-h-20">
+                  <p className="text-[11px] uppercase tracking-wider text-gray-600">{label}</p>
+                  <p className="text-sm font-semibold text-gray-200 mt-1 break-words">{value}</p>
+                </div>
+              ))}
+            </div>
+            {!isGuest && (
+              <div className="p-4 border-t border-white/8">
+                <div className="flex items-center gap-2 mb-3">
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                  <p className="text-xs font-mono uppercase tracking-wider text-gray-500">Modeling</p>
+                </div>
+                <ExcelTools companyId={info.id} />
+              </div>
+            )}
+          </aside>
         </div>
       )}
 
       {/* News */}
+      {newsStatus === "loading" && (
+        <section className="mt-10 bg-[#0f0f14] border border-white/8 rounded-xl p-6">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+              <Loader2 className="w-5 h-5 text-blue-300 animate-spin" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">Loading company news</h2>
+              <p className="text-sm text-gray-500 mt-1">Checking cached articles first, then refreshing if needed.</p>
+            </div>
+          </div>
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="rounded-xl border border-white/8 bg-black/20 overflow-hidden">
+                <div className="aspect-video bg-white/6 animate-pulse" />
+                <div className="p-4 space-y-2">
+                  <div className="h-3 rounded bg-white/8 animate-pulse" />
+                  <div className="h-3 w-3/4 rounded bg-white/8 animate-pulse" />
+                  <div className="h-2 w-20 rounded bg-emerald-500/20 animate-pulse mt-4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       {newsData != null && newsData.length > 0 && (
         <div className="mt-10">
           <div className="mb-6">
@@ -283,6 +502,41 @@ const CompanyInfo = () => {
           </div>
           <NewsList newsData={newsData} />
         </div>
+      )}
+      {newsStatus === "error" && (
+        <section className="mt-10 bg-[#0f0f14] border border-red-500/20 rounded-xl p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-white">News could not load</h2>
+                <p className="text-sm text-gray-500 mt-1">{newsError || "Try again in a moment."}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => fetchCompanyNews()}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-gray-300 border border-white/10 hover:bg-white/8 text-xs font-semibold"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+          </div>
+        </section>
+      )}
+      {newsStatus === "done" && newsData != null && newsData.length === 0 && (
+        <section className="mt-10 bg-[#0f0f14] border border-white/8 rounded-xl p-6">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
+              <Newspaper className="w-5 h-5 text-gray-400" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-white">No recent news found</h2>
+              <p className="text-sm text-gray-500 mt-1">The chart, snapshot, and modeling tools are still available for this company.</p>
+            </div>
+          </div>
+        </section>
       )}
     </main>
   );

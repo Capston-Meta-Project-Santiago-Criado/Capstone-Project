@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { BASE_URL } from "./lib/utils";
+import { cachedFetch } from "./lib/apiCache";
+import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import PortfolioCompanies from "./components/PortfolioCompanies";
 import SwingCompanies from "./components/SwingCompanies";
@@ -12,6 +14,91 @@ import Stocks from "./components/Stocks";
 
 const MODE_DAY = "Day";
 const VIEWER_PERMS = "viewer";
+
+const PortfolioAiSummary = ({ portfolioId }) => {
+  const [state, setState] = useState({ status: "loading", rollup: null, error: "" });
+
+  const load = (revalidate = false) => {
+    setState((s) => ({ status: s.rollup ? s.status : "loading", rollup: s.rollup, error: "" }));
+    cachedFetch(
+      `portfolio-rollup:${portfolioId}`,
+      async () => {
+        const res = await fetch(`${BASE_URL}/ai/portfolio-rollup/${portfolioId}`, { credentials: "include" });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e.error || "Could not load summary");
+        }
+        return res.json();
+      },
+      24 * 60 * 60 * 1000,
+      revalidate ? { revalidate: true } : {},
+    )
+      .then((data) => setState({ status: "done", rollup: data?.rollup || null, error: "" }))
+      .catch((err) => setState((s) => ({ status: "error", rollup: s.rollup, error: err.message || "Could not load summary" })));
+  };
+
+  useEffect(() => {
+    if (portfolioId != null) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [portfolioId]);
+
+  const r = state.rollup;
+  return (
+    <section className="mt-6 bg-[#0f0f14] border border-white/8 rounded-xl p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Sparkles className="w-4 h-4 text-emerald-400" />
+        <h2 className="text-sm font-mono uppercase tracking-wider text-gray-400">Portfolio AI Summary</h2>
+      </div>
+
+      {state.status === "loading" && !r && (
+        <div className="flex items-center gap-3 text-gray-400">
+          <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+          <p className="text-sm">Summarizing the portfolio…</p>
+        </div>
+      )}
+
+      {state.status === "error" && !r && (
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-gray-400">{state.error || "Could not generate a summary."}</p>
+          <button
+            onClick={() => load(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 text-gray-300 border border-white/10 hover:bg-white/8 text-xs font-semibold"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Retry
+          </button>
+        </div>
+      )}
+
+      {r && (
+        <div>
+          <p className="text-sm text-gray-300 leading-relaxed">{r.overview}</p>
+          {Array.isArray(r.themes) && r.themes.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {r.themes.map((t, i) => (
+                <span key={`${t}-${i}`} className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          {Array.isArray(r.exposures) && r.exposures.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-mono uppercase tracking-wider text-gray-500 mb-2">Key exposures</p>
+              <ul className="space-y-1.5">
+                {r.exposures.map((e, i) => (
+                  <li key={`${e.label}-${i}`} className="text-sm text-gray-300">
+                    <span className="text-gray-200 font-semibold">{e.label}</span>
+                    {e.note ? <span className="text-gray-500"> — {e.note}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};
 
 const PortfolioInfo = () => {
   const [portfolioData, setPortfolioData] = useState(null);
@@ -123,32 +210,38 @@ const PortfolioInfo = () => {
             id: val.id,
             name: val.name,
             ticker: val.ticker,
-            industry: val.industry.name,
-            sector: val.industry.sector.name,
+            industry: val.industry?.name ?? "Unknown",
+            sector: val.industry?.sector?.name ?? "Unknown",
           });
         }
       }
     }
-    setCompaniesData(newArray);
-    const prices = [];
-    let i = 0;
-    let sum = 0;
-    for (const company of newArray) {
-      const stockResponse = await fetch(`${BASE_URL}/getters/stats/${company.ticker}`, {
+    const tickers = newArray.map((company) => company.ticker);
+    const query = tickers.map((ticker) => `tickers[]=${encodeURIComponent(ticker)}`).join("&");
+    const stockResponse = tickers.length > 0
+      ? await fetch(`${BASE_URL}/getters/manycompanies?${query}`, {
         method: "GET",
         credentials: "include",
-      });
-      const stockData = await stockResponse.json();
-      prices.push({ price: stockData.regularMarketPrice, dayStart: stockData.regularMarketPreviousClose });
-      sum += stockData.regularMarketPrice * companiesStocks[i];
-      i++;
-    }
+      })
+      : null;
+    const stockResults = stockResponse?.ok ? await stockResponse.json() : [];
+    const prices = newArray.map((company, index) => {
+      const stockData = stockResults[index] ?? {};
+      return {
+        price: stockData.regularMarketPrice ?? 0,
+        dayStart: stockData.regularMarketPreviousClose ?? stockData.regularMarketPrice ?? 0,
+      };
+    });
+    const sum = prices.reduce((total, stockData, index) => {
+      return total + stockData.price * (companiesStocks[index] || 1);
+    }, 0);
     setPortfolioValue(sum.toFixed(2));
     let prevSum = 0;
     for (let j = 0; j < prices.length; j++) {
       prevSum += prices[j].dayStart * (companiesStocks[j] || 1);
     }
     setDailyChange(prevSum > 0 ? parseFloat(((sum - prevSum) / prevSum * 100).toFixed(2)) : 0);
+    setCompaniesData(newArray);
     setCompaniesStockData(prices);
   };
 
@@ -224,6 +317,9 @@ const PortfolioInfo = () => {
         )}
       </div>
 
+      {/* Portfolio AI summary */}
+      {portfolioData && <PortfolioAiSummary portfolioId={id} />}
+
       {/* Top row: Companies + Swings */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-6">
         <PortfolioCompanies
@@ -260,6 +356,7 @@ const PortfolioInfo = () => {
           companiesData={companiesData}
           companiesStockData={companiesStockData}
           portfolioData={portfolioData}
+          setPortfolioData={setPortfolioData}
           portfolioValue={portfolioValue}
           setPortfolioValue={setPortfolioValue}
           perms={viewerPermissions}

@@ -4,6 +4,7 @@ const Anthropic = require("@anthropic-ai/sdk");
 const { PrismaClient } = require("../generated/prisma");
 const { parseCanalyst } = require("../lib/canalystParser");
 const { buildClubReference } = require("../lib/clubPitchLibrary");
+const { generateCompanySummary, generatePortfolioRollup, coalesce } = require("../lib/companySummary");
 
 const router = express.Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -506,6 +507,99 @@ router.post("/tcm-review", upload.single("canalystFile"), async (req, res, next)
     });
 
     res.json({ ...review, chatId: savedChat?.id ?? null, savedAt: savedChat?.created_at ?? null });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- AI business summaries (cached, generated lazily on first view) ---
+
+// Per-company business summary. Generated once on the first profile view of a
+// company that has never been summarized, then served from the cached column.
+router.get("/company-summary/:companyId", async (req, res, next) => {
+  try {
+    const userId = requireUser(req, res);
+    if (!userId) return;
+    const companyId = parseInt(req.params.companyId, 10);
+    if (!Number.isInteger(companyId)) return res.status(400).json({ error: "Invalid company id." });
+
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      include: { industry: { include: { sector: true } } },
+    });
+    if (!company) return res.status(404).json({ error: "Company not found." });
+
+    if (company.aiSummary) {
+      return res.json({ summary: company.aiSummary, generatedAt: company.aiSummaryGeneratedAt });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: "ANTHROPIC_API_KEY is not configured." });
+    }
+
+    const result = await coalesce(`company:${companyId}`, async () => {
+      // Re-check inside the lock in case a concurrent first-viewer just finished.
+      const fresh = await prisma.company.findUnique({ where: { id: companyId } });
+      if (fresh?.aiSummary) return { summary: fresh.aiSummary, generatedAt: fresh.aiSummaryGeneratedAt };
+
+      const tenK = await prisma.document.findFirst({
+        where: { companyId, type: "10-K" },
+        orderBy: { filed_date: "desc" },
+      });
+      const summary = await generateCompanySummary(company, tenK);
+      const updated = await prisma.company.update({
+        where: { id: companyId },
+        data: { aiSummary: summary, aiSummaryGeneratedAt: new Date() },
+        select: { aiSummary: true, aiSummaryGeneratedAt: true },
+      });
+      return { summary: updated.aiSummary, generatedAt: updated.aiSummaryGeneratedAt };
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Portfolio-level rollup. Generated lazily on portfolio open; regenerated when
+// the set of holdings changes (aiRollupKey). Never triggers per-company generation.
+router.get("/portfolio-rollup/:portfolioId", async (req, res, next) => {
+  try {
+    const userId = requireUser(req, res);
+    if (!userId) return;
+    const portfolioId = parseInt(req.params.portfolioId, 10);
+    if (!Number.isInteger(portfolioId)) return res.status(400).json({ error: "Invalid portfolio id." });
+
+    const portfolio = await prisma.portfolio.findUnique({ where: { id: portfolioId } });
+    if (!portfolio) return res.status(404).json({ error: "Portfolio not found." });
+
+    const key = [...(portfolio.companiesIds || [])].sort((a, b) => a - b).join(",");
+    if (portfolio.aiRollup && portfolio.aiRollupKey === key) {
+      return res.json({ rollup: portfolio.aiRollup, generatedAt: portfolio.aiRollupGeneratedAt });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: "ANTHROPIC_API_KEY is not configured." });
+    }
+
+    const result = await coalesce(`portfolio:${portfolioId}`, async () => {
+      const fresh = await prisma.portfolio.findUnique({ where: { id: portfolioId } });
+      const freshKey = [...(fresh?.companiesIds || [])].sort((a, b) => a - b).join(",");
+      if (fresh?.aiRollup && fresh.aiRollupKey === freshKey) {
+        return { rollup: fresh.aiRollup, generatedAt: fresh.aiRollupGeneratedAt };
+      }
+      const companies = fresh?.companiesIds?.length
+        ? await prisma.company.findMany({
+            where: { id: { in: fresh.companiesIds } },
+            include: { industry: { include: { sector: true } } },
+          })
+        : [];
+      const rollup = await generatePortfolioRollup(fresh, companies);
+      const updated = await prisma.portfolio.update({
+        where: { id: portfolioId },
+        data: { aiRollup: rollup, aiRollupGeneratedAt: new Date(), aiRollupKey: freshKey },
+        select: { aiRollup: true, aiRollupGeneratedAt: true },
+      });
+      return { rollup: updated.aiRollup, generatedAt: updated.aiRollupGeneratedAt };
+    });
+    res.json(result);
   } catch (err) {
     next(err);
   }

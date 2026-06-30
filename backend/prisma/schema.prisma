@@ -38,6 +38,8 @@ model Company {
   dividends           Float[]        @default([])
   dividendsDates      Int[]   @default([])
   UpcomingEarnings    String[]    @default([])
+  aiSummary            Json?
+  aiSummaryGeneratedAt DateTime?
 }
 
   model User { 
@@ -96,6 +98,9 @@ model Portfolio {
     companiesStocks   Int[] @default([])
     model       Boolean @default(false)
     isTraining  Boolean @default(false)
+    aiRollup             Json?
+    aiRollupGeneratedAt  DateTime?
+    aiRollupKey          String?
 }
 
 model Sector { 
