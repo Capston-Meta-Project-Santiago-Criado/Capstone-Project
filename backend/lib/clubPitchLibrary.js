@@ -344,6 +344,106 @@ const CLUB_PITCHES = [
       "S&M efficiency improves",
     ],
   },
+  {
+    company: "Winmark Corporation",
+    ticker: "WINA",
+    sector: "Consumer - franchisor of resale retail brands",
+    pitchType: "Short",
+    analysts: ["Will Kim", "Emilie Su", "Oliver Ho", "Mira Schubert"],
+    thesis:
+      "Short: an MSD/HSD/low-teens revenue/EBIT/EPS grower priced for growth at ~35x fwd P/E vs ~20x historical. SSS grows at inflation, store count grows only LSD (new stores smaller/slower), and there's limited runway to cut OpEx - so the stock should re-rate back toward its historical ~25x. Base: 1.1Y PT $313 (Dec-2026 exit, 22% IRR).",
+    businessModel:
+      "Franchisor of 5 resale brands; 91% of FY24 revenue is high-margin Royalty & Franchise (R&F) fees. Plato's Closet (515 stores, 42% of R&F), Once Upon a Child (430, 33%), Play It Again Sports (302, 19%), Style Encore + Music Go Round (103, 6%). Capital-light, ~49% net margin; market treats it as a recession-proof 'compounder'.",
+    modelingApproach:
+      "SSS (at ~inflation) x store count (LSD growth, new stores 10%+ smaller) build; SG&A broken out (~60% direct visibility) to show operating leverage is exhausted; EPS-multiple re-rate from ~35x toward historical ~25x. Base PT $313 (Dec-26, 22% IRR) exiting on ~6% fwd rev / ~10% fwd EPS growth. Primary research: Placer.ai foot-traffic, Google Trends, ZIP-overlap-with-Goodwill analysis, expert calls, signed-franchise-agreement leading indicator. Bear/Base/Bull (SG&A 'Other' sensitized).",
+    thesisPoints: [
+      "TP1 - Low growth: 13+ years of SSS at/below inflation, new stores HSD-mid-teens less productive; not benefiting from the mid-teens secondhand-market CAGR (loses share to Goodwill in overlapping ZIPs and to online resale where sellers get better pricing); management conservatively awards franchises (~20 openings/yr, 99%+ renewal) -> store count grows LSD.",
+      "TP2 - No OpEx runway: SG&A grew just 1.5% over 14yrs and headcount was cut >20% since 2018, but headcount bottomed FY23 and is growing again -> OpEx grows LSD and EBIT only MSD-HSD; the operating-leverage story is over.",
+    ],
+    cases: {
+      bear: "Short risk: multiple stays elevated / idiosyncratic SSS inflection / AI cost cuts / Canada growth",
+      base: "2-3% SSS, 2-3% store growth, 3% SG&A -> re-rate toward historical; PT $313, 22% IRR (Dec-26)",
+      bull: "Faster re-rate to ~25x as growth disappoints and buyback/EPS tailwind fades",
+    },
+    keyDrivers: [
+      "SSS growth (~inflation)",
+      "Store count growth (LSD) & new-store productivity",
+      "SG&A growth (~3%, no cut runway)",
+      "Buyback/EPS tailwind fading (rising SOFR, $30M maturities '28/'29)",
+      "P/E multiple re-rate (~35x -> ~25x)",
+    ],
+    comps:
+      "Consumer/apparel/specialty retail peers avg ~20.6x LTM P/E (WINA ~37x = ~80% premium). Resale competitors: ThredUp, RealReal, Depop, Poshmark (online); Savers Value Village, Goodwill (offline).",
+    keyRisks: ["AI adoption cuts costs", "International / Canada growth", "Idiosyncratic SSS inflection"],
+  },
+  {
+    company: "Synopsys",
+    ticker: "SNPS",
+    sector: "Software / semiconductors - electronic design automation (EDA)",
+    pitchType: "Long",
+    analysts: ["John Cardwell", "Aria Gao", "Raina Swani", "AJ Caesar"],
+    thesis:
+      "Long: durable compounder in the EDA duopoly with Cadence (mission-critical chip-design tools, ~100% renewal). Ansys acquisition + shift to customized IP broaden monetization; a 3Q25 EPS miss + 30% drawdown from temporary IP headwinds (China export ban, Intel pause) created a discount to history/comps. Frames 16.5% / 19.1% / 39% beats to 2028 consensus Rev / Adj. OpInc / Adj. EPS; capitalize 44x LTM EPS -> Dec-2029 exit $1,145, 27.1% IRR.",
+    businessModel:
+      "EDA software, hardware, and IP across all stages of chip design. Design Automation ~70% of revenue (~80% recurring 3Y software, ~20% upfront hardware/services); Design IP ~30% (up from 15% in 2015). Dominant in logic synthesis & signoff (70%+ share for decades); verification (ZeBu vs Cadence's Palladium) is the key battleground.",
+    modelingApproach:
+      "EDA wallet-share build (% of customers' R&D: 3.8% -> ~4.3% by 2029) + a ~1.5% productivity-tool (DSO/VSO/TSO.ai) uplift + a hardware-cycle call + IP recovery/margin. Consensus-beat framing; capitalize 44x LTM EPS -> $1,145 (Dec-29), 27.1% IRR. Heavy expert calls + government-contract pricing analysis. Bear/Base/Bull (the four key variables/debates).",
+    thesisPoints: [
+      "TP1 - Rising EDA share of R&D: advanced-node (<=7nm) penetration, exploding design cost, and an engineering-labor shortage drive EDA to capture more of customer R&D; .ai productivity tools add ~1.5% growth; a ZeBu hardware cycle drives near-term beats and reverses the Cadence share-loss narrative.",
+      "TP2 - IP written to zero: the Q3 selloff priced China + Intel IP (~15% of value) to zero, de-risking the downside, while custom-IP monetization (Arm-style royalty uplift) is neglected and recoverable.",
+      "Call option (TP3) - Ansys gives SNPS the lead in multi-physics simulation, the next phase of EDA.",
+    ],
+    cases: {
+      bear: "China BIS restrictions persist / Intel spend shifts away / custom-IP margins stay depressed",
+      base: "44x LTM EPS -> $1,145 Dec-2029, 27.1% IRR (16.5%/19.1%/39% beats to 2028 Rev/OpInc/EPS)",
+      bull: "Faster wallet-share gains + .ai monetization + Ansys synergies",
+    },
+    keyDrivers: [
+      "EDA wallet share of customer R&D",
+      "Advanced-node (<=7nm) penetration",
+      ".ai productivity-tool monetization",
+      "Hardware cycle (ZeBu vs Palladium)",
+      "IP recovery (China/Intel) & custom-IP margin",
+      "Ansys integration / multi-physics",
+      "LTM P/E multiple",
+    ],
+    comps:
+      "Cadence (CDNS) - the duopoly partner (~40x fwd EPS vs SNPS ~32x); Siemens EDA distant #3. Design IP: Arm, Rambus, Alphawave.",
+    keyRisks: ["China BIS export restrictions on EDA/IP", "Intel spend shift away from SNPS", "Custom-IP margins don't recover", "Ansys integration risk"],
+  },
+  {
+    company: "Solventum",
+    ticker: "SOLV",
+    sector: "Healthcare - medtech (2024 spinoff from 3M)",
+    pitchType: "Long",
+    thesis:
+      "Long: healthcare-products carve-out from 3M (Apr-2024) that was previously mismanaged and underinvested. New CEO Bryan Hanson (ex-Zimmer Biomet / Medtronic) is driving a turnaround - R&D up (~5% -> ~9% of sales), SKU rationalization, cost-out, and tuck-in M&A - while the stock trades at just 13.2x NTM P/E on a back-loaded (FY27+) EPS ramp and a 3M-overhang discount. Base: capitalize $10.75 2029 GAAP EPS at 14.5x -> $156 PT, 1.9x MOIC, 22.4% IRR over 3-4Y.",
+    businessModel:
+      "Three segments post-P&F divestiture: MedSurg ~64% (Advanced Wound Care - NPWT, Prevena/Snap; Infection Prevention & Surgical - Tegaderm ~75% share of transparent dressings), Dental ~18% (Clarity aligners/ortho, restorative), Health Information Systems ~18% (clinical documentation, autonomous coding, revenue-cycle management).",
+    modelingApproach:
+      "Segment revenue-beat build off volume/adoption (MedSurg 7.6% CAGR -> 18.9% beat; Dental 4.5% -> 5.2% beat; HIS 6.6% -> 6.3% beat; ~14.1% total FY29 rev beat) + margin expansion (90bps COGS, 820bps SG&A FY24-29) + capital allocation. Capitalize $10.75 2029 GAAP EPS at 14.5x -> $156, 1.9x MOIC, 22.4% IRR. Heavy expert calls. Bear/Base/Bull.",
+    thesisPoints: [
+      "TP1 - Product-quality & launch execution drive consensus-beating volume: NPWT/Prevena penetration <30% (Prevena 4x fewer complications/readmissions), sterilization-assurance underpenetrated, Acera Surgical acquisition in regenerative wound care; Dental new launches; HIS automation scale-up (throughput +33-43%).",
+      "TP2 - Cost base + capital allocation -> carve-out to compounder: SG&A was sized for a ~$30B 3M segment vs a ~$9B standalone; TSA roll-off + SKU rationalization (25%+ variant cut) lift margins; $4.1B P&F sale funded $2.8B debt paydown + Acera + a $1B buyback.",
+    ],
+    cases: {
+      bear: "Separation/TSA costs drag, 3M stake monetization overhang weighs on the multiple, EPS ramp slips",
+      base: "$10.75 2029 GAAP EPS at 14.5x -> $156, 1.9x MOIC, 22.4% IRR",
+      bull: "Faster margin expansion + accretive tuck-in M&A + multiple re-rate toward higher-quality medtech comps",
+    },
+    keyDrivers: [
+      "MedSurg adoption (NPWT/Prevena penetration)",
+      "Dental & HIS organic growth",
+      "SG&A margin (820bps) + COGS (SKU rationalization)",
+      "TSA roll-off",
+      "Capital allocation (debt paydown / M&A / buyback)",
+      "3M stake overhang (~15%)",
+      "Exit P/E multiple",
+    ],
+    comps:
+      "Higher-quality medtech trading above SOLV's 14.5x exit: Smith & Nephew (15.3x), Envista (17.2x), Alcon (15.9x), Becton Dickinson (16.7x). Wound: Smith & Nephew, Molnlycke, ConvaTec, Cardinal. Dental: Dentsply Sirona, Envista, Align. HIS: Nuance/Microsoft, Epic, Oracle Health.",
+    keyRisks: ["3M stake monetization overhang", "EPS growth back-loaded to FY27+", "TSA exit / separation execution"],
+  },
 ];
 
 const formatCard = (p) => {
