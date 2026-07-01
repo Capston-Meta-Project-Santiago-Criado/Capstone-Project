@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { BASE_URL } from "../lib/utils";
 import { useNavigate } from "react-router-dom";
 import { UserInfo } from "../context/UserContext";
@@ -9,6 +9,17 @@ const SearchBar = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { setSelectedId } = UserInfo();
   const navigate = useNavigate();
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleInputChange = async (e) => {
     setSearchQuery(e.target.value);
@@ -37,7 +48,7 @@ const SearchBar = () => {
   };
 
   return (
-    <div className="relative w-96">
+    <div className="relative w-96" ref={containerRef}>
       <div className="flex items-center gap-2 bg-white/6 border border-white/10 rounded-lg px-3 py-1.5 focus-within:border-emerald-500/40 focus-within:bg-white/8 transition-all duration-200">
         <Search className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
         <input
