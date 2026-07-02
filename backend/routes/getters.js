@@ -1,5 +1,4 @@
-const { PrismaClient } = require("../generated/prisma");
-const prisma = new PrismaClient();
+const prisma = require("../lib/prisma");
 
 const express = require("express");
 const app = express();
@@ -7,15 +6,33 @@ app.use(express.json());
 const router = express.Router({ mergeParams: true });
 require("dotenv").config();
 
-const { isMarketOpen, dailyChangePct } = require("../lib/utils");
+const { isMarketOpen, lastMarketClose, dailyChangePct } = require("../lib/utils");
 
 const finnhub = require("finnhub");
 const finnhubClient = new finnhub.DefaultApi(process.env.finnhubKey);
 
 const POLYGON_KEY = process.env.POLYGON_KEY;
 const QUOTE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes during market hours
-const DB_STALE_THRESHOLD = 2 * 24 * 60 * 60 * 1000; // treat DB price as stale after 2 days
 const quoteCache = new Map(); // ticker -> { data, fetchedAt }
+
+// A DB price is current when it was captured at/after the most recent market
+// close — anything older is a previous session's quote and must be refreshed.
+const isDbPriceCurrent = (company) =>
+  company?.daily_price > 0 &&
+  company.lastUpdate &&
+  new Date(company.lastUpdate) >= lastMarketClose();
+
+const dbRowToQuote = (company) => {
+  const prevClose = company.daily_price_change !== 0
+    ? company.daily_price / (1 + company.daily_price_change / 100)
+    : company.daily_price;
+  return {
+    symbol: company.ticker,
+    regularMarketPrice: company.daily_price,
+    regularMarketPreviousClose: parseFloat(prevClose.toFixed(4)),
+    averageAnalystRating: null,
+  };
+};
 
 // Fetch snapshots for multiple tickers in one Polygon API call
 const fetchPolygonSnapshots = async (tickers) => {
@@ -82,10 +99,10 @@ router.get("/search/:query", async (req, res) => {
   if (searchResults.length < 3) {
     const portfolioResults = await prisma.portfolio.findMany({
       where: {
+        isPublic: true,
         OR: [
           {
             name: { contains: query, mode: "insensitive" },
-            isPublic: true,
           },
           {
             user: {
@@ -132,44 +149,39 @@ router.get("/manycompanies", async (req, res) => {
     if (!raw) return res.json([]);
     const tickerArr = Array.isArray(raw) ? raw : [raw];
 
-    // When markets are closed serve from DB — skip Polygon if prices are fresh
+    const companies = await prisma.company.findMany({
+      where: { ticker: { in: tickerArr } },
+    });
+    const byTicker = Object.fromEntries(companies.map((c) => [c.ticker, c]));
+
+    // When markets are closed serve from DB — skip Polygon if every price
+    // was captured at/after the latest close
     if (!isMarketOpen()) {
-      const companies = await prisma.company.findMany({
-        where: { ticker: { in: tickerArr } },
-      });
-      const byTicker = Object.fromEntries(companies.map((c) => [c.ticker, c]));
       const prices = tickerArr.map((ticker) => {
         const c = byTicker[ticker];
-        const age = c?.lastUpdate ? Date.now() - new Date(c.lastUpdate).getTime() : Infinity;
-        if (c && c.daily_price > 0 && age < DB_STALE_THRESHOLD) {
-          const prevClose = c.daily_price_change !== 0
-            ? c.daily_price / (1 + c.daily_price_change / 100)
-            : c.daily_price;
-          return {
-            symbol: ticker,
-            regularMarketPrice: c.daily_price,
-            regularMarketPreviousClose: parseFloat(prevClose.toFixed(4)),
-            averageAnalystRating: null,
-          };
-        }
-        // DB missing or stale — fall through to Polygon
-        return null;
+        return isDbPriceCurrent(c) ? dbRowToQuote(c) : null;
       });
-
-      // If all tickers resolved from fresh DB, return immediately
       if (prices.every(Boolean)) return res.json(prices);
     }
 
     // Markets open (or DB stale): batch Polygon call for all tickers at once
     const snapshots = await fetchPolygonSnapshots(tickerArr);
     const prices = tickerArr.map((ticker) => {
-      const result = snapshots[ticker] ?? { symbol: ticker, regularMarketPrice: 0, regularMarketPreviousClose: 0 };
+      let result = snapshots[ticker];
+      if (!result || !(result.regularMarketPrice > 0)) {
+        // Polygon had nothing — a stale DB price beats showing 0.00
+        const c = byTicker[ticker];
+        result = c?.daily_price > 0
+          ? dbRowToQuote(c)
+          : { symbol: ticker, regularMarketPrice: 0, regularMarketPreviousClose: 0 };
+      }
       quoteCache.set(ticker, { data: result, fetchedAt: Date.now() });
       return result;
     });
-    // Write back to DB so the next request (or after restart) skips Polygon
+    // Write back to DB so the next request (or after restart) skips Polygon.
+    // Only genuine Polygon results — DB fallbacks must keep their old lastUpdate.
     Promise.all(
-      prices
+      Object.values(snapshots)
         .filter((p) => p.regularMarketPrice > 0)
         .map((p) =>
           prisma.company.updateMany({
@@ -193,20 +205,14 @@ router.get("/stats/:companyTick", async (req, res) => {
 
     const company = await prisma.company.findFirst({ where: { ticker } });
 
-    // Fresh DB cache — use it without hitting any external API
+    // Fresh DB cache — use it without hitting any external API.
+    // Market open: fresh means updated within the last 90 minutes.
+    // Market closed: fresh means captured at/after the most recent close.
     if (company && company.daily_price > 0 && company.lastUpdate) {
       const age = Date.now() - new Date(company.lastUpdate).getTime();
-      const isFresh = age < DB_STALE_THRESHOLD && (!isMarketOpen() || age < DB_PRICE_TTL);
+      const isFresh = isMarketOpen() ? age < DB_PRICE_TTL : isDbPriceCurrent(company);
       if (isFresh) {
-        const prevClose = company.daily_price_change !== 0
-          ? company.daily_price / (1 + company.daily_price_change / 100)
-          : company.daily_price;
-        return res.status(200).json({
-          symbol: ticker,
-          regularMarketPrice: company.daily_price,
-          regularMarketPreviousClose: parseFloat(prevClose.toFixed(4)),
-          averageAnalystRating: null,
-        });
+        return res.status(200).json(dbRowToQuote(company));
       }
     }
 
@@ -226,15 +232,7 @@ router.get("/stats/:companyTick", async (req, res) => {
 
     // Fall back to stale DB data rather than returning nothing
     if (company && company.daily_price > 0) {
-      const prevClose = company.daily_price_change !== 0
-        ? company.daily_price / (1 + company.daily_price_change / 100)
-        : company.daily_price;
-      return res.status(200).json({
-        symbol: ticker,
-        regularMarketPrice: company.daily_price,
-        regularMarketPreviousClose: parseFloat(prevClose.toFixed(4)),
-        averageAnalystRating: null,
-      });
+      return res.status(200).json(dbRowToQuote(company));
     }
 
     // Nothing available
@@ -316,31 +314,27 @@ router.get("/news/:id", async (req, res) => {
       return res.status(502).json({ error: err.message || "Could not fetch news" });
     }
 
-    for (const article of articles) {
-      if (!article.url || !article.headline) continue;
-      await prisma.article.upsert({
-        where: { link: article.url },
-        update: {
-          source: article.source ?? "",
-          title: article.headline,
-          summary: article.summary ?? "",
-          publishDate: article.datetime ? new Date(article.datetime * 1000) : new Date(),
-          language: "en",
-          images: article.image ? [article.image] : [],
-          companyId: id,
-        },
-        create: {
-          link: article.url,
-          source: article.source ?? "",
-          title: article.headline,
-          summary: article.summary ?? "",
-          publishDate: article.datetime ? new Date(article.datetime * 1000) : new Date(),
-          language: "en",
-          images: article.image ? [article.image] : [],
-          companyId: id,
-        },
-      });
-    }
+    // Upsert in parallel — Prisma queues these on the shared pool
+    await Promise.all(
+      articles
+        .filter((article) => article.url && article.headline)
+        .map((article) => {
+          const fields = {
+            source: article.source ?? "",
+            title: article.headline,
+            summary: article.summary ?? "",
+            publishDate: article.datetime ? new Date(article.datetime * 1000) : new Date(),
+            language: "en",
+            images: article.image ? [article.image] : [],
+            companyId: id,
+          };
+          return prisma.article.upsert({
+            where: { link: article.url },
+            update: fields,
+            create: { link: article.url, ...fields },
+          });
+        })
+    );
 
     currentArticles = await prisma.article.findMany({
       where: { companyId: id },

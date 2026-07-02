@@ -1,5 +1,4 @@
-const { PrismaClient } = require("../generated/prisma");
-const prisma = new PrismaClient();
+const prisma = require("./prisma");
 const finnhub = require("finnhub");
 const finnhubClient = new finnhub.DefaultApi(process.env.finnhubKey);
 
@@ -45,6 +44,19 @@ const isMarketOpen = () => {
   return mins >= 9 * 60 + 30 && mins < 16 * 60;
 };
 
+// Absolute timestamp of the most recent NYSE close (4:00 PM ET, skipping weekends).
+// A stored price is only "current" if it was written at or after this moment.
+const lastMarketClose = () => {
+  const now = new Date();
+  const etNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const offsetMs = now.getTime() - etNow.getTime(); // ET wall clock → absolute time
+  const close = new Date(etNow);
+  close.setHours(16, 0, 0, 0);
+  if (etNow < close) close.setDate(close.getDate() - 1);
+  while (close.getDay() === 0 || close.getDay() === 6) close.setDate(close.getDate() - 1);
+  return new Date(close.getTime() + offsetMs);
+};
+
 // constants for getBefore Date
 const MODE_DAY = "Day";
 const MODE_WEEK = "Week";
@@ -76,13 +88,15 @@ const getBeforeDate = (timeFrame) => {
   return prevDate;
 };
 
-const BATCH_SIZE = 100;
 const MAX_BETWEEN_TIME_PRICE = 1000 * 60 * 90; // 1.5 hr update cycle, don't want to get ip banned from yfinance -> no batch call for yfinance js unfortunately
 
 //used mostly for recommendations
+let isUpdatingCompanies = false; // every /curated hit fires this; never run two loops at once
+
 const updateAllCompanies = async () => {
   // Don't refresh prices outside market hours — they won't change
   if (!isMarketOpen()) return;
+  if (isUpdatingCompanies) return;
 
   const mostRecent = await prisma.company.findFirst({
     orderBy: {
@@ -96,18 +110,16 @@ const updateAllCompanies = async () => {
   ) {
     return;
   }
-  const allCompanies = await prisma.company.findMany();
-  const onlyTickers = allCompanies.map((value) => value.ticker);
-  let currentInd = 0;
-  while (true) {
-    // to prevent yfinance crash
-    batchSplit = onlyTickers.slice(currentInd, currentInd + BATCH_SIZE);
-    if (batchSplit.length == 0) {
-      break;
-    }
+  isUpdatingCompanies = true;
+  try {
+    const allCompanies = await prisma.company.findMany();
+    const onlyTickers = allCompanies.map((value) => value.ticker);
     const firstDate = formatDate(getBeforeDate(""));
     const secondDate = formatDate(new Date());
-    for (let ticker of batchSplit) {
+    for (let ticker of onlyTickers) {
+      // The full sweep takes hours; once the market closes, stop rather than
+      // keep stamping companies with an old day's quote at midnight.
+      if (!isMarketOpen()) break;
       await wait(350);
       try {
         const quote = await getFinnhubQuote(ticker);
@@ -131,8 +143,9 @@ const updateAllCompanies = async () => {
         continue;
       }
     }
-    currentInd += BATCH_SIZE;
+  } finally {
+    isUpdatingCompanies = false;
   }
 };
 
-module.exports = { formatDate, getBeforeDate, updateAllCompanies, wait, isMarketOpen, dailyChangePct };
+module.exports = { formatDate, getBeforeDate, updateAllCompanies, wait, isMarketOpen, lastMarketClose, dailyChangePct };

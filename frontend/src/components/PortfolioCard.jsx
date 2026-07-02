@@ -8,6 +8,7 @@ import {
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../lib/utils";
+import { cachedFetch } from "../lib/apiCache";
 import { useParams } from "react-router-dom";
 
 export const DeleteButton = ({ deleteCard, isCard }) => {
@@ -63,8 +64,12 @@ const PortfolioCard = ({ id, name, description, setPortfolios, canDelete, creato
   const [performance, setPerformance] = useState(null);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/portfolios/performance/${id}`, { credentials: "include" })
-      .then((r) => r.ok ? r.json() : null)
+    // Cached so navigating between pages doesn't refetch every card
+    cachedFetch(`portfolio-performance:${id}`, async () => {
+      const r = await fetch(`${BASE_URL}/portfolios/performance/${id}`, { credentials: "include" });
+      if (!r.ok) throw new Error("performance failed");
+      return r.json();
+    })
       .then((data) => { if (data) setPerformance(data.dailyChange); })
       .catch(() => {});
   }, [id]);

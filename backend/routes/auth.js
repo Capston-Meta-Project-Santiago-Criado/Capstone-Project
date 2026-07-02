@@ -1,7 +1,6 @@
 const MIN_PASSWORD_LENGTH = 8;
 
-const { PrismaClient } = require("../generated/prisma");
-const prisma = new PrismaClient();
+const prisma = require("../lib/prisma");
 
 const express = require("express");
 const app = express();

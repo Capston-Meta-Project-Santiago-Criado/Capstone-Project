@@ -100,7 +100,9 @@ const PredictionTools = ({ portfolioData, companiesData, companiesStockData, por
       if (!res.ok) return;
       const data = await res.json();
       setEarningsData(data ?? []);
-    } catch {}
+    } catch {
+      // leave earnings empty on network failure
+    }
   };
 
   async function getModel(isNewModel) {

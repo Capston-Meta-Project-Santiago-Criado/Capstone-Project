@@ -1,14 +1,13 @@
 const express = require("express");
 const multer = require("multer");
 const Anthropic = require("@anthropic-ai/sdk");
-const { PrismaClient } = require("../generated/prisma");
 const { parseCanalyst } = require("../lib/canalystParser");
 const { buildClubReference } = require("../lib/clubPitchLibrary");
 const { generateCompanySummary, generatePortfolioRollup, coalesce } = require("../lib/companySummary");
 
 const router = express.Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-const prisma = new PrismaClient();
+const prisma = require("../lib/prisma");
 
 const MODEL = (process.env.ANTHROPIC_MODEL || "claude-haiku-4-5").trim();
 

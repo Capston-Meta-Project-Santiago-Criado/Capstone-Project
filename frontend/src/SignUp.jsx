@@ -28,7 +28,8 @@ const SignUp = () => {
     setFormData((prevState) => ({ ...prevState, [name]: value }));
   };
 
-  const handleNext = async () => {
+  const handleNext = async (event) => {
+    event.preventDefault();
     if (
       formData.name == "" ||
       formData.password == "" ||
@@ -158,6 +159,7 @@ const SignUp = () => {
           )}
 
           <button
+            type="button"
             onClick={() => {
               navigate("/");
             }}

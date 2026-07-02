@@ -112,6 +112,7 @@ const Login = () => {
           </p>
         )}
         <button
+          type="button"
           id="signup"
           className="m-2 bg-green-400 shadow-xl/10 shadow-slate-900 text-black  hover:brightness-110"
           onClick={() => navigate("/signup")}

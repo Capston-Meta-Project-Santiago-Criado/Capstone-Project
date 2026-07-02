@@ -4,12 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { UserInfo } from "../context/UserContext";
 import { Search } from "lucide-react";
 
+const SEARCH_DEBOUNCE_MS = 250;
+
 const SearchBar = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const { setSelectedId } = UserInfo();
   const navigate = useNavigate();
   const containerRef = useRef(null);
+  const debounceRef = useRef(null);
+  const abortRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -18,22 +22,47 @@ const SearchBar = () => {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
   }, []);
 
-  const handleInputChange = async (e) => {
-    setSearchQuery(e.target.value);
-    if (!e.target.value) {
+  const runSearch = async (query) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    try {
+      const response = await fetch(
+        `${BASE_URL}/getters/search/${encodeURIComponent(query)}`,
+        { credentials: "include", signal: controller.signal }
+      );
+      if (response.ok) {
+        setSearchResults(await response.json());
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") setSearchResults([]);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    clearTimeout(debounceRef.current);
+    if (!query.trim()) {
+      abortRef.current?.abort();
       setSearchResults([]);
       return;
     }
-    const response = await fetch(
-      `${BASE_URL}/getters/search/${e.target.value}`,
-      { credentials: "include" }
-    );
-    if (response.ok) {
-      setSearchResults(await response.json());
-    }
+    debounceRef.current = setTimeout(() => runSearch(query), SEARCH_DEBOUNCE_MS);
+  };
+
+  const closeResults = () => {
+    clearTimeout(debounceRef.current);
+    abortRef.current?.abort();
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   const handleSelect = (value) => {
@@ -43,8 +72,16 @@ const SearchBar = () => {
         : `/CompanyInfo/${value.id}`;
     setSelectedId(value.id);
     navigate(url);
-    setSearchQuery("");
-    setSearchResults([]);
+    closeResults();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      closeResults();
+      e.target.blur();
+    } else if (e.key === "Enter" && searchResults.length > 0) {
+      handleSelect(searchResults[0]);
+    }
   };
 
   return (
@@ -57,6 +94,7 @@ const SearchBar = () => {
           className="bg-transparent text-sm text-white placeholder-gray-500 outline-none w-full"
           value={searchQuery}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           autoComplete="off"
         />
       </div>

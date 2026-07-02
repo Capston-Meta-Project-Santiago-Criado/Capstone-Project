@@ -18,22 +18,12 @@ import CanalystConverter from "./CanalystConverter";
 import AiChats from "./AiChats";
 import { socket } from "./socket";
 import { useEffect } from "react";
-import { BASE_URL } from "./lib/utils";
 
 const LoggedInPage = ({ isLoggedIn, children, isGuest }) => {
   const { fullName, numberOfNotifications, setNumberOfNotifications, invalidateNotifications } =
     UserInfo();
 
   useEffect(() => {
-    const getStoredNotifications = async () => {
-      const response = await fetch(`${BASE_URL}/notifications/unread`, {
-        method: "GET",
-        credentials: "include",
-      });
-      const count = await response.json();
-      setNumberOfNotifications(count);
-    };
-
     const onNotification = (number) => {
       setNumberOfNotifications(number);
       // Force-refresh the cached notification list so inbox updates immediately
@@ -41,10 +31,6 @@ const LoggedInPage = ({ isLoggedIn, children, isGuest }) => {
     };
 
     socket.on("notification", onNotification);
-    if (isLoggedIn) {
-      getStoredNotifications();
-    }
-
     return () => {
       socket.off("notification", onNotification);
     };
@@ -102,22 +88,27 @@ const App = () => {
     <div className="flex flex-col">
       <BrowserRouter>
         <Routes>
-          <Route
-            path="/CompanyInfo/:selectedId"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <CompanyInfo />
-              </LoggedInPage>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <Home />
-              </LoggedInPage>
-            }
-          />
+          {[
+            ["/", <Home />],
+            ["/home", <Home />],
+            ["/CompanyInfo/:selectedId", <CompanyInfo />],
+            ["/inbox", <Inbox />],
+            ["/settings", <Settings />],
+            ["/canalyst", <CanalystConverter />],
+            ["/ai-chats", <AiChats />],
+            ["/portfolios", <Portfolios />],
+            ["/portfolios/:id", <PortfolioInfo />],
+          ].map(([path, page]) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
+                  {page}
+                </LoggedInPage>
+              }
+            />
+          ))}
           <Route
             path="/login"
             element={
@@ -126,63 +117,7 @@ const App = () => {
               </LoggedInPage>
             }
           />
-          <Route
-            path="/inbox"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <Inbox />
-              </LoggedInPage>
-            }
-          />
-          <Route
-            path="/home"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <Home />
-              </LoggedInPage>
-            }
-          />
-          <Route
-            path="/settings"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <Settings />
-              </LoggedInPage>
-            }
-          />
-          <Route
-            path="/canalyst"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <CanalystConverter />
-              </LoggedInPage>
-            }
-          />
-          <Route
-            path="/ai-chats"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <AiChats />
-              </LoggedInPage>
-            }
-          />
           <Route path="/signup" element={isLoggedIn ? <Navigate to="/home" replace /> : <SignUp />} />
-          <Route
-            path="/portfolios"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <Portfolios />
-              </LoggedInPage>
-            }
-          />
-          <Route
-            path="/portfolios/:id"
-            element={
-              <LoggedInPage isLoggedIn={isLoggedIn} isGuest={isGuest}>
-                <PortfolioInfo />
-              </LoggedInPage>
-            }
-          />
         </Routes>
       </BrowserRouter>
       <Footer />

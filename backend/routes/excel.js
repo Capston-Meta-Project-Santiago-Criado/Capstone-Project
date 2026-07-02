@@ -1,5 +1,4 @@
-const { PrismaClient } = require("../generated/prisma");
-const prisma = new PrismaClient();
+const prisma = require("../lib/prisma");
 const express = require("express");
 const ExcelJS = require("exceljs");
 const router = express.Router({ mergeParams: true });

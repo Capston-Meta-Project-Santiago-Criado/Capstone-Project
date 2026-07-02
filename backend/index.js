@@ -1,5 +1,4 @@
-const { PrismaClient } = require("./generated/prisma");
-const prisma = new PrismaClient();
+const prisma = require("./lib/prisma");
 const { PrismaSessionStore } = require("@quixo3/prisma-session-store");
 const { BadParams, DoesNotExist } = require("./routes/middleware/CustomErrors");
 const { Server } = require("socket.io");
@@ -44,9 +43,9 @@ const sessionMiddleware = session({
     sameSite: isProd ? "none" : "lax",
   },
   secret: process.env.SESSION_SECRET,
-  resave: true,
+  resave: false,
   saveUninitialized: false,
-  store: new PrismaSessionStore(new PrismaClient(), {
+  store: new PrismaSessionStore(prisma, {
     checkPeriod: 2 * 60 * 1000, //ms
     dbRecordIdIsSessionId: true,
     dbRecordIdFunction: undefined,

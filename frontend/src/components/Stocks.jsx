@@ -31,6 +31,15 @@ const Stocks = ({
   const commitShares = (ind, newVal) => {
     const clamped = Math.max(1, Math.round(newVal) || 1);
     const oldShares = shares[ind] ?? 1;
+    if (clamped === oldShares) {
+      // No change — just normalize the input text, don't flag unsaved edits
+      setInputVals((prev) => {
+        const next = [...prev];
+        next[ind] = String(clamped);
+        return next;
+      });
+      return;
+    }
     setShares((prev) => {
       const next = [...prev];
       next[ind] = clamped;

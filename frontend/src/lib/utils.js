@@ -41,8 +41,10 @@ const handleLogin = async (
   }
 };
 
-const toPercentage = (startPrice, endPrice) => {
-  return (((startPrice - endPrice) / startPrice) * 100).toFixed(2);
+// Daily % change vs. previous close — same formula as the backend's dailyChangePct
+const toPercentage = (currentPrice, previousClose) => {
+  if (!previousClose) return "0.00";
+  return (((currentPrice - previousClose) / previousClose) * 100).toFixed(2);
 };
 
 const wait = (ms) => {

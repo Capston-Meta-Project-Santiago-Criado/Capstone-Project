@@ -1,5 +1,4 @@
-const { PrismaClient } = require("../generated/prisma");
-const prisma = new PrismaClient();
+const prisma = require("../lib/prisma");
 
 const express = require("express");
 
@@ -75,7 +74,7 @@ router.get("/model-exists/:id", async (req, res) => {
       id: portfolioId,
     },
   });
-  res.json(portfolio.model);
+  res.json(portfolio?.model ?? null);
 });
 
 router.delete("/:id", async (req, res, next) => {
@@ -101,7 +100,7 @@ router.delete("/:id/:companyId", async (req, res, next) => {
     },
   });
   if (portfolio == null) {
-    next(new DoesNotExist(BAD_PARAMS));
+    return next(new DoesNotExist(BAD_PARAMS));
   }
   const array = portfolio.companiesIds.filter((val) => val !== companyId);
   const updatedPortfolio = await prisma.portfolio.update({
@@ -168,7 +167,7 @@ router.put("/add/:id/:companyId", async (req, res, next) => {
   res.status(200).json(newPortfolio);
 });
 
-router.put("/update/:id", async (req, res) => {
+router.put("/update/:id", async (req, res, next) => {
   const portfolioId = parseInt(req.params.id);
   const { companyStocks } = req.body;
   const portfolio = await prisma.portfolio.findUnique({
@@ -177,7 +176,7 @@ router.put("/update/:id", async (req, res) => {
     },
   });
   if (portfolio == null) {
-    next(new BadParams("not a real portfolio id"));
+    return next(new BadParams("not a real portfolio id"));
   }
   const newPortfolio = await prisma.portfolio.update({
     where: { id: portfolioId },
@@ -194,29 +193,29 @@ router.put("/addMany/:companyId", async (req, res, next) => {
   const companyId = parseInt(req.params.companyId);
   const possibleIds = req.body.ids;
 
-  if (companyId == null) {
-    next(BadParams("companyids specified, or other bad param issue"));
+  if (Number.isNaN(companyId) || !Array.isArray(possibleIds)) {
+    return next(new BadParams("companyids specified, or other bad param issue"));
   }
 
   const ids = possibleIds.map((val) => parseInt(val));
 
-  for (let portfolioId of ids) {
-    const portfolio = await prisma.portfolio.findUnique({
-      where: {
-        id: portfolioId,
-      },
-    });
-    if (portfolio.companiesIds.includes(companyId)) {
-      continue;
-    }
-    await prisma.portfolio.update({
-      where: { id: portfolioId },
-      data: {
-        companiesIds: { push: companyId },
-        companiesStocks: { push: 1 },
-      },
-    });
-  }
+  // One query for all portfolios; only touch the caller's own that lack the company
+  const portfolios = await prisma.portfolio.findMany({
+    where: { id: { in: ids }, userId: req.session.userId },
+  });
+  await Promise.all(
+    portfolios
+      .filter((portfolio) => !portfolio.companiesIds.includes(companyId))
+      .map((portfolio) =>
+        prisma.portfolio.update({
+          where: { id: portfolio.id },
+          data: {
+            companiesIds: { push: companyId },
+            companiesStocks: { push: 1 },
+          },
+        })
+      )
+  );
   res.status(200).json({ message: "added" });
 });
 
@@ -293,7 +292,7 @@ router.get("/swings/:portfolioId/:timeFrame", async (req, res, next) => {
     },
   });
   if (portfolio == null) {
-    next(new BadParams("portfolio does not exist"));
+    return next(new BadParams("portfolio does not exist"));
   }
   const todayString = new Date();
   const earlierString = getBeforeDate(timeFrame);
@@ -330,7 +329,7 @@ router.post("/make/public/:id", async (req, res) => {
     },
   });
 
-  allPortfolios = await prisma.portfolio.update({
+  const allPortfolios = await prisma.portfolio.update({
     where: {
       id: portfolioId,
     },
@@ -368,7 +367,7 @@ router.get("/getNotes/:id", async (req, res, next) => {
     },
   });
   if (portfolio == null) {
-    next(new BadParams("no portfolio with such Id"));
+    return next(new BadParams("no portfolio with such Id"));
   }
   res.json(portfolio.notesDoc);
 });
@@ -382,8 +381,11 @@ router.post("/setNotes/:id", async (req, res, next) => {
     },
   });
 
+  if (portfolioCheck == null) {
+    return next(new BadParams("no portfolio with such Id"));
+  }
   if (portfolioCheck.userId !== userId) {
-    next(new BadParams("you do not have permission to change these notes"));
+    return next(new BadParams("you do not have permission to change these notes"));
   }
   const newDoc = req.body.html;
 

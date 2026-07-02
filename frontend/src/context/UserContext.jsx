@@ -27,6 +27,13 @@ const UserContextProvider = ({ children }) => {
       } else {
         setFullName(data.name);
         setIsLoggedIn(true);
+        // Seed the unread badge once; socket pushes keep it current afterwards
+        try {
+          const r = await fetch(`${BASE_URL}/notifications/unread`, { credentials: "include" });
+          if (r.ok) setNumberOfNotifications(await r.json());
+        } catch {
+          // badge stays at 0 until the next socket push
+        }
       }
       setAuthChecked(true);
     };
@@ -41,7 +48,9 @@ const UserContextProvider = ({ children }) => {
       const data = await r.json();
       setNotifications(data);
       notifsFetchedAt.current = Date.now();
-    } catch {}
+    } catch {
+      // keep the last cached list on network failure
+    }
   };
 
   const invalidateNotifications = () => {
