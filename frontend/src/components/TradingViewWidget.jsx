@@ -22,15 +22,15 @@ const TradingViewScrollArea = ({ info }) => {
       setAllDocuments(allDocs);
     };
     getAllDocuments();
-  });
+  }, [selectedId]);
 
   if (info == null) {
     return;
   }
 
   return (
-    <ScrollArea className="h-125 rounded-md border border-white w-100 ">
-      <div className="p-4">
+    <ScrollArea className="h-125 w-full xl:w-90 shrink-0 rounded-xl border border-white/8 bg-[#0f0f14]">
+      <div className="p-5">
         {allDocuments.length == 0 && (
           <img
             className="w-20 h-20 mr-auto ml-auto mt-20"
@@ -39,8 +39,8 @@ const TradingViewScrollArea = ({ info }) => {
         )}
         {allDocuments.length != 0 && (
           <>
-            <h4 className="mb-4 text-sm leading-none font-bold text-white">
-              Major Filings for {info.name} (by date filed)
+            <h4 className="mb-4 text-sm font-mono uppercase tracking-wider text-gray-400">
+              Major Filings <span className="text-gray-600 normal-case">(by date filed)</span>
             </h4>
             {allDocuments != null &&
               allDocuments.map((document) => {
@@ -48,11 +48,12 @@ const TradingViewScrollArea = ({ info }) => {
                 return (
                   <React.Fragment key={document.id}>
                     <a href={document.url} target="_blank">
-                      <div className="text-sm text-white hover:brightness-40 hover:cursor-pointer">
-                        {document.type} | {date.toDateString()}
+                      <div className="flex items-baseline justify-between gap-3 text-sm text-gray-300 hover:text-emerald-400 hover:cursor-pointer transition-colors duration-150">
+                        <span className="font-semibold">{document.type}</span>
+                        <span className="text-xs text-gray-500 shrink-0">{date.toDateString()}</span>
                       </div>
                     </a>
-                    <Separator className="my-2" />
+                    <Separator className="my-2 bg-white/8" />
                   </React.Fragment>
                 );
               })}
@@ -82,19 +83,19 @@ function TradingViewWidget({ info }) {
           "lineWidth": 2,
           "lineType": 0,
           "chartType": "area",
-          "fontColor": "rgb(106, 109, 120)",
-          "gridLineColor": "rgba(46, 46, 46, 0.06)",
+          "fontColor": "rgb(148, 152, 161)",
+          "gridLineColor": "rgba(255, 255, 255, 0.06)",
           "volumeUpColor": "rgba(34, 171, 148, 0.5)",
           "volumeDownColor": "rgba(247, 82, 95, 0.5)",
-          "backgroundColor": "#ffffff",
-          "widgetFontColor": "#0F0F0F",
+          "backgroundColor": "#0f0f14",
+          "widgetFontColor": "#d1d5db",
           "upColor": "#22ab94",
           "downColor": "#f7525f",
           "borderUpColor": "#22ab94",
           "borderDownColor": "#f7525f",
           "wickUpColor": "#22ab94",
           "wickDownColor": "#f7525f",
-          "colorTheme": "light",
+          "colorTheme": "dark",
           "isTransparent": false,
           "locale": "en",
           "chartOnly": false,
@@ -131,20 +132,16 @@ function TradingViewWidget({ info }) {
   }, [info]);
 
   return (
-    <>
-      <div className="w-320 h-125 flex flex-row">
+    <div className="flex flex-col xl:flex-row gap-5 w-full">
+      <div className="flex-1 min-w-0 h-125 rounded-xl border border-white/8 bg-[#0f0f14] overflow-hidden">
         <div
           className="tradingview-widget-container"
           style={{ width: "100%", height: "100%" }}
           ref={container}
         ></div>
-        {info && (
-          <div className="ml-10">
-            <TradingViewScrollArea info={info} />
-          </div>
-        )}
       </div>
-    </>
+      {info && <TradingViewScrollArea info={info} />}
+    </div>
   );
 }
 
