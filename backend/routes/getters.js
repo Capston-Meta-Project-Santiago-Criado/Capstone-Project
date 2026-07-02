@@ -7,7 +7,7 @@ app.use(express.json());
 const router = express.Router({ mergeParams: true });
 require("dotenv").config();
 
-const { isMarketOpen } = require("../lib/utils");
+const { isMarketOpen, dailyChangePct } = require("../lib/utils");
 
 const finnhub = require("finnhub");
 const finnhubClient = new finnhub.DefaultApi(process.env.finnhubKey);
@@ -174,7 +174,7 @@ router.get("/manycompanies", async (req, res) => {
         .map((p) =>
           prisma.company.updateMany({
             where: { ticker: p.symbol },
-            data: { daily_price: p.regularMarketPrice, daily_price_change: p.todaysChangePerc ?? 0, lastUpdate: new Date() },
+            data: { daily_price: p.regularMarketPrice, daily_price_change: dailyChangePct(p.regularMarketPrice, p.regularMarketPreviousClose), lastUpdate: new Date() },
           })
         )
     ).catch(() => {});
@@ -217,7 +217,7 @@ router.get("/stats/:companyTick", async (req, res) => {
         where: { ticker },
         data: {
           daily_price: live.regularMarketPrice,
-          daily_price_change: live.todaysChangePerc ?? 0,
+          daily_price_change: dailyChangePct(live.regularMarketPrice, live.regularMarketPreviousClose),
           lastUpdate: new Date(),
         },
       }).catch(() => {});

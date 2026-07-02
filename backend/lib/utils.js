@@ -10,7 +10,7 @@ const getFinnhubQuote = (ticker) =>
       resolve({
         symbol: ticker,
         regularMarketPrice: data.c,
-        regularMarketChangePercent: data.dp,
+        regularMarketPreviousClose: data.pc,
       });
     });
   });
@@ -29,6 +29,12 @@ const getFinnhubDividends = (ticker, from, to) =>
 const wait = (ms) => {
   return new Promise((resolve) => setTimeout(resolve, ms));
 };
+
+// Daily % change derived from the same price points we store, so it stays
+// consistent with daily_price. Providers' own "change percent" fields are
+// measured against a different reference price and must not be trusted here.
+const dailyChangePct = (price, prevClose) =>
+  prevClose > 0 ? ((price - prevClose) / prevClose) * 100 : 0;
 
 // Returns true only during NYSE trading hours: Mon–Fri 9:30 AM–4:00 PM US Eastern
 const isMarketOpen = () => {
@@ -110,7 +116,10 @@ const updateAllCompanies = async () => {
           where: { ticker },
           data: {
             daily_price: quote.regularMarketPrice,
-            daily_price_change: quote.regularMarketChangePercent,
+            daily_price_change: dailyChangePct(
+              quote.regularMarketPrice,
+              quote.regularMarketPreviousClose
+            ),
             lastUpdate: new Date(),
             ...(dividendData && {
               dividends: dividendData.amounts,
@@ -126,4 +135,4 @@ const updateAllCompanies = async () => {
   }
 };
 
-module.exports = { formatDate, getBeforeDate, updateAllCompanies, wait, isMarketOpen };
+module.exports = { formatDate, getBeforeDate, updateAllCompanies, wait, isMarketOpen, dailyChangePct };
